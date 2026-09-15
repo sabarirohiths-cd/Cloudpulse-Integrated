@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  main-backend:
+    build:
+      context: ./Workspace-main/backend
+      dockerfile: Dockerfile.dev
+    container_name: main-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./Workspace-main/backend:/app
+    environment:
+      - DATABASE_URL=sqlite+aiosqlite:///./data/cloud_pulse.db
+    restart: unless-stopped
+
+  topology-backend:
+    build:
+      context: ./Workspace-topology/backend
+      dockerfile: Dockerfile.dev
+    container_name: topology-backend
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./Workspace-topology/backend:/app
+      - ./Workspace-main/backend/data:/app/data
+    environment:
+      - DATABASE_URL=sqlite+aiosqlite:///./data/cloud_pulse.db
+    restart: unless-stopped
+
+  main-frontend:
+    build:
+      context: ./Workspace-main/frontend
+      dockerfile: Dockerfile.dev
+    container_name: main-frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./Workspace-main/frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_TOPOLOGY_FRONTEND_URL=http://topology-frontend:5174
+      - VITE_API_PROXY_URL=http://main-backend:8000
+    depends_on:
+      - main-backend
+      - topology-frontend
+    restart: unless-stopped
+
+  topology-frontend:
+    build:
+      context: ./Workspace-topology/frontend
+      dockerfile: Dockerfile.dev
+    container_name: topology-frontend
+    volumes:
+      - ./Workspace-topology/frontend:/app
+      - /app/node_modules
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8001/api/v1
+    depends_on:
+      - topology-backend
+    restart: unless-stopped

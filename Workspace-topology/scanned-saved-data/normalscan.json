@@ -1,0 +1,410 @@
+{
+    "nodes": [
+        {
+            "id": "i-0295f0b2df9cce6d7",
+            "type": "EC2",
+            "label": "Topology-Compute-Node",
+            "status": "running",
+            "metadata": {
+                "InstanceType": "t3.micro",
+                "PrivateIpAddress": "10.0.1.223",
+                "PublicIpAddress": "54.229.209.215",
+                "VpcId": "vpc-096f5df6a1e301204",
+                "SubnetId": "subnet-0f74b1cdd88359e21",
+                "NetworkInterfaces": [
+                    {
+                        "NetworkInterfaceId": "eni-08803741f500c54b3",
+                        "ElasticIp": "54.229.209.215"
+                    }
+                ],
+                "status_checks": {
+                    "system_status": "ok",
+                    "instance_status": "ok",
+                    "ebs_status": "ok",
+                    "summary": "3/3 checks passed"
+                },
+                "Region": "eu-west-1"
+            },
+            "health_state": "HEALTHY",
+            "diagnostic": null
+        },
+        {
+            "id": "arn:aws:iam::879343933129:role/topology-test-ec2-role",
+            "type": "IAM_ROLE",
+            "label": "topology-test-ec2-role",
+            "status": "available",
+            "metadata": {
+                "RoleName": "topology-test-ec2-role",
+                "CreateDate": "2026-08-28 11:16:12+00:00",
+                "AttachedPoliciesCount": 2,
+                "Type": "Instance Profile",
+                "Region": "global"
+            },
+            "health_state": "HEALTHY",
+            "diagnostic": null
+        },
+        {
+            "id": "sg-0482c5aff8d773825",
+            "type": "SECURITY_GROUP",
+            "label": "topology-test-ec2-sg",
+            "status": "available",
+            "metadata": {
+                "Type": "Security Group",
+                "GroupId": "sg-0482c5aff8d773825",
+                "Region": "eu-west-1",
+                "InboundRules": [
+                    "Allow TCP 80 from sg-0c336633e9722ff82"
+                ],
+                "OutboundRules": [
+                    "Allow All All to Public (0.0.0.0/0)"
+                ]
+            },
+            "health_state": "HEALTHY",
+            "diagnostic": null
+        },
+        {
+            "id": "vpc-096f5df6a1e301204",
+            "type": "VPC",
+            "label": "topology-test-vpc",
+            "status": "available",
+            "metadata": {
+                "CidrBlock": "10.0.0.0/16",
+                "InstanceTenancy": "default",
+                "IsDefault": false,
+                "Region": "eu-west-1"
+            },
+            "health_state": "HEALTHY",
+            "diagnostic": null
+        },
+        {
+            "id": "subnet-0f74b1cdd88359e21",
+            "type": "SUBNET",
+            "label": "topology-test-public-a",
+            "status": "available",
+            "metadata": {
+                "CidrBlock": "10.0.1.0/24",
+                "AvailabilityZone": "eu-west-1a",
+                "AvailableIpAddressCount": 249,
+                "MapPublicIpOnLaunch": true,
+                "Region": "eu-west-1",
+                "NACL_Id": "acl-03c96f781a7f7c50a",
+                "InboundRules": [
+                    "#100 ALLOW ALL TRAFFIC from 0.0.0.0/0"
+                ],
+                "OutboundRules": [
+                    "#100 ALLOW ALL TRAFFIC to 0.0.0.0/0"
+                ],
+                "RouteTable_Id": "rtb-0a31fdb8a9a31d9cb",
+                "Routes": [
+                    "10.0.0.0/16 -> local",
+                    "0.0.0.0/0 -> igw-053ce2e5d48776218"
+                ]
+            },
+            "health_state": "HEALTHY",
+            "diagnostic": null
+        },
+        {
+            "id": "igw-053ce2e5d48776218",
+            "type": "IGW",
+            "label": "topology-test-igw",
+            "status": "available",
+            "metadata": {
+                "AttachmentState": "available",
+                "Region": "eu-west-1"
+            },
+            "health_state": "HEALTHY",
+            "diagnostic": null
+        },
+        {
+            "id": "arn:aws:elasticloadbalancing:eu-west-1:879343933129:targetgroup/topology-test-tg/a627378f14788998",
+            "type": "TARGET_GROUP",
+            "label": "topology-test-tg",
+            "status": "active",
+            "metadata": {
+                "Protocol": "HTTP",
+                "Port": 80,
+                "TargetType": "instance",
+                "HealthCheckPath": "/",
+                "UnhealthyHostCount": 1,
+                "Region": "eu-west-1"
+            },
+            "health_state": "CRITICAL",
+            "diagnostic": "Health check failed (1 unhealthy). Web process may be down."
+        },
+        {
+            "id": "arn:aws:elasticloadbalancing:eu-west-1:879343933129:loadbalancer/app/topology-test-alb/62c667998a4918b6",
+            "type": "ALB",
+            "label": "topology-test-alb",
+            "status": "active",
+            "metadata": {
+                "DNSName": "topology-test-alb-1768129082.eu-west-1.elb.amazonaws.com",
+                "Scheme": "internet-facing",
+                "Type": "application",
+                "VpcId": "vpc-096f5df6a1e301204",
+                "Region": "eu-west-1"
+            },
+            "health_state": "HEALTHY",
+            "diagnostic": null
+        },
+        {
+            "id": "sg-0c336633e9722ff82",
+            "type": "SECURITY_GROUP",
+            "label": "topology-test-alb-sg",
+            "status": "available",
+            "metadata": {
+                "Type": "Security Group",
+                "GroupId": "sg-0c336633e9722ff82",
+                "Region": "eu-west-1",
+                "InboundRules": [
+                    "Allow TCP 80 from Public (0.0.0.0/0)"
+                ],
+                "OutboundRules": [
+                    "Allow All All to Public (0.0.0.0/0)"
+                ]
+            },
+            "health_state": "HEALTHY",
+            "diagnostic": null
+        },
+        {
+            "id": "api.cloudpulse-topology.local",
+            "type": "ROUTE53",
+            "label": "api.cloudpulse-topology.local",
+            "status": "active",
+            "metadata": {
+                "RecordType": "A",
+                "TTL": null,
+                "Region": "eu-west-1"
+            },
+            "health_state": "HEALTHY",
+            "diagnostic": null
+        },
+        {
+            "id": "vol-0bd84fd038c9a647b",
+            "type": "EBS",
+            "label": "vol-0bd84fd038c9a647b",
+            "status": "in-use",
+            "metadata": {
+                "SizeGB": 2,
+                "VolumeType": "gp3",
+                "IOPS": 3000,
+                "Encrypted": true,
+                "Throughput": 125,
+                "Region": "eu-west-1"
+            },
+            "health_state": "HEALTHY",
+            "diagnostic": null
+        },
+        {
+            "id": "vol-07dc3c17a2ffb32c0",
+            "type": "EBS",
+            "label": "vol-07dc3c17a2ffb32c0",
+            "status": "in-use",
+            "metadata": {
+                "SizeGB": 8,
+                "VolumeType": "gp2",
+                "IOPS": 100,
+                "Encrypted": false,
+                "Throughput": null,
+                "Region": "eu-west-1"
+            },
+            "health_state": "HEALTHY",
+            "diagnostic": null
+        },
+        {
+            "id": "topology-test-db",
+            "type": "RDS",
+            "label": "topology-test-db",
+            "status": "available",
+            "metadata": {
+                "Engine": "mysql",
+                "AllocatedStorage": 20,
+                "InstanceClass": "db.t3.micro",
+                "MultiAZ": false,
+                "PubliclyAccessible": false,
+                "DBClusterIdentifier": null,
+                "Region": "eu-west-1"
+            },
+            "health_state": "HEALTHY",
+            "diagnostic": null
+        },
+        {
+            "id": "sg-00d9ffa2e2cf24554",
+            "type": "SECURITY_GROUP",
+            "label": "topology-test-rds-sg",
+            "status": "available",
+            "metadata": {
+                "Type": "Security Group",
+                "GroupId": "sg-00d9ffa2e2cf24554",
+                "Region": "eu-west-1",
+                "InboundRules": [
+                    "Allow TCP 3306 from sg-0482c5aff8d773825"
+                ],
+                "OutboundRules": [
+                    "Allow All All to Public (0.0.0.0/0)"
+                ]
+            },
+            "health_state": "HEALTHY",
+            "diagnostic": null
+        },
+        {
+            "id": "arn:aws:sns:eu-west-1:879343933129:cloudpulse-diagnostic-alerts",
+            "type": "SNS_TOPIC",
+            "label": "cloudpulse-diagnostic-alerts",
+            "status": "available",
+            "metadata": {
+                "TopicArn": "arn:aws:sns:eu-west-1:879343933129:cloudpulse-diagnostic-alerts",
+                "Type": "SNS Topic",
+                "Region": "eu-west-1"
+            },
+            "health_state": "HEALTHY",
+            "diagnostic": null
+        },
+        {
+            "id": "arn:aws:cloudwatch:eu-west-1:879343933129:alarm:cloudpulse-rds-high-cpu",
+            "type": "CLOUDWATCH_ALARM",
+            "label": "cloudpulse-rds-high-cpu",
+            "status": "ok",
+            "metadata": {
+                "MetricName": "CPUUtilization",
+                "Namespace": "AWS/RDS",
+                "Statistic": "Average",
+                "Threshold": 85.0,
+                "Type": "CloudWatch Alarm",
+                "Region": "eu-west-1"
+            },
+            "health_state": "HEALTHY",
+            "diagnostic": null
+        },
+        {
+            "id": "arn:aws:cloudwatch:eu-west-1:879343933129:alarm:cloudpulse-unhealthy-hosts",
+            "type": "CLOUDWATCH_ALARM",
+            "label": "cloudpulse-unhealthy-hosts",
+            "status": "insufficient_data",
+            "metadata": {
+                "MetricName": "UnhealthyHostCount",
+                "Namespace": "AWS/ApplicationELB",
+                "Statistic": "Average",
+                "Threshold": 1.0,
+                "Type": "CloudWatch Alarm",
+                "Region": "eu-west-1"
+            },
+            "health_state": "UNKNOWN",
+            "diagnostic": null
+        }
+    ],
+    "edges": [
+        {
+            "source": "arn:aws:iam::879343933129:role/topology-test-ec2-role",
+            "target": "i-0295f0b2df9cce6d7",
+            "relation": "GRANTS_ACCESS_TO",
+            "health_state": "HEALTHY",
+            "diagnostic": null
+        },
+        {
+            "source": "sg-0482c5aff8d773825",
+            "target": "i-0295f0b2df9cce6d7",
+            "relation": "PROTECTS",
+            "health_state": "HEALTHY",
+            "diagnostic": null
+        },
+        {
+            "source": "vpc-096f5df6a1e301204",
+            "target": "subnet-0f74b1cdd88359e21",
+            "relation": "CONTAINS",
+            "health_state": "HEALTHY",
+            "diagnostic": null
+        },
+        {
+            "source": "subnet-0f74b1cdd88359e21",
+            "target": "i-0295f0b2df9cce6d7",
+            "relation": "CONTAINS",
+            "health_state": "HEALTHY",
+            "diagnostic": null
+        },
+        {
+            "source": "vpc-096f5df6a1e301204",
+            "target": "igw-053ce2e5d48776218",
+            "relation": "ATTACHED_TO",
+            "health_state": "HEALTHY",
+            "diagnostic": null
+        },
+        {
+            "source": "arn:aws:elasticloadbalancing:eu-west-1:879343933129:targetgroup/topology-test-tg/a627378f14788998",
+            "target": "i-0295f0b2df9cce6d7",
+            "relation": "TARGETS",
+            "health_state": "HEALTHY",
+            "diagnostic": null
+        },
+        {
+            "source": "arn:aws:elasticloadbalancing:eu-west-1:879343933129:loadbalancer/app/topology-test-alb/62c667998a4918b6",
+            "target": "arn:aws:elasticloadbalancing:eu-west-1:879343933129:targetgroup/topology-test-tg/a627378f14788998",
+            "relation": "FORWARDS_TO",
+            "health_state": "HEALTHY",
+            "diagnostic": null
+        },
+        {
+            "source": "sg-0c336633e9722ff82",
+            "target": "arn:aws:elasticloadbalancing:eu-west-1:879343933129:loadbalancer/app/topology-test-alb/62c667998a4918b6",
+            "relation": "PROTECTS",
+            "health_state": "HEALTHY",
+            "diagnostic": null
+        },
+        {
+            "source": "api.cloudpulse-topology.local",
+            "target": "arn:aws:elasticloadbalancing:eu-west-1:879343933129:loadbalancer/app/topology-test-alb/62c667998a4918b6",
+            "relation": "ROUTES_TO",
+            "health_state": "HEALTHY",
+            "diagnostic": null
+        },
+        {
+            "source": "i-0295f0b2df9cce6d7",
+            "target": "vol-0bd84fd038c9a647b",
+            "relation": "MOUNTS",
+            "health_state": "HEALTHY",
+            "diagnostic": null
+        },
+        {
+            "source": "i-0295f0b2df9cce6d7",
+            "target": "vol-07dc3c17a2ffb32c0",
+            "relation": "MOUNTS",
+            "health_state": "HEALTHY",
+            "diagnostic": null
+        },
+        {
+            "source": "i-0295f0b2df9cce6d7",
+            "target": "topology-test-db",
+            "relation": "QUERIES",
+            "health_state": "HEALTHY",
+            "diagnostic": null
+        },
+        {
+            "source": "sg-00d9ffa2e2cf24554",
+            "target": "topology-test-db",
+            "relation": "PROTECTS",
+            "health_state": "HEALTHY",
+            "diagnostic": null
+        },
+        {
+            "source": "arn:aws:cloudwatch:eu-west-1:879343933129:alarm:cloudpulse-rds-high-cpu",
+            "target": "arn:aws:sns:eu-west-1:879343933129:cloudpulse-diagnostic-alerts",
+            "relation": "TRIGGERS",
+            "health_state": "HEALTHY",
+            "diagnostic": null
+        },
+        {
+            "source": "arn:aws:cloudwatch:eu-west-1:879343933129:alarm:cloudpulse-rds-high-cpu",
+            "target": "topology-test-db",
+            "relation": "MONITORS",
+            "health_state": "HEALTHY",
+            "diagnostic": null
+        },
+        {
+            "source": "arn:aws:cloudwatch:eu-west-1:879343933129:alarm:cloudpulse-unhealthy-hosts",
+            "target": "arn:aws:sns:eu-west-1:879343933129:cloudpulse-diagnostic-alerts",
+            "relation": "TRIGGERS",
+            "health_state": "HEALTHY",
+            "diagnostic": null
+        }
+    ],
+    "last_compute_id": "i-0295f0b2df9cce6d7"
+}

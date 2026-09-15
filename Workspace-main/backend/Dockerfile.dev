@@ -1,0 +1,13 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# Install uv for fast dependency resolution
+RUN pip install uv
+
+# Copy requirements and install
+COPY requirements.txt .
+RUN uv pip install --system -r requirements.txt
+
+# The code will be mounted as a volume at runtime, but we set the default command
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

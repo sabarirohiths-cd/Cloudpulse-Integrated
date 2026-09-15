@@ -1,0 +1,11 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy package files and install dependencies
+COPY package.json package-lock.json* ./
+RUN npm install
+
+# The code will be mounted as a volume at runtime
+# Start the dev server and expose to 0.0.0.0
+CMD ["npm", "start", "--", "--host", "0.0.0.0", "--port", "3000"]
