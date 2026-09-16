@@ -41,6 +41,11 @@ export default function TopologyPage() {
   const [focusNodeId, setFocusNodeId] = useState(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
+  // Phase 2 UI State
+  const [viewMode, setViewMode] = useState('Architecture');
+  const [traceDepth, setTraceDepth] = useState('All');
+  const [groupResources, setGroupResources] = useState(true);
+
   const [showScanModal, setShowScanModal] = useState(false);
 
   // Observability State
@@ -621,6 +626,7 @@ export default function TopologyPage() {
                 data={flowData}
                 focusNodeId={focusNodeId}
                 isSidebarOpen={isSidebarOpen}
+                groupResources={groupResources}
                 onNodeClick={(node) => {
                   setSelectedNode(node);
                 }}

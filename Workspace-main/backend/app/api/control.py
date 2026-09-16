@@ -496,10 +496,16 @@ async def _background_control_sync(account_name: Optional[str], region: str = "a
             except Exception as e:
                 err_str = str(e)
                 import traceback
-                traceback.print_exc()
+                
+                # Check for auth errors first
+                is_auth_error = any(auth_err in err_str for auth_err in ["ExpiredToken", "RequestExpired", "InvalidClientTokenId", "InvalidAccessKeyId"])
+                
+                if not is_auth_error:
+                    traceback.print_exc()
+                    
                 print(f"[Backend Sync] Failed to sync account {config['account_name']}: {e}")
                 async with SessionLocal() as db:
-                    if "ExpiredToken" in err_str or "RequestExpired" in err_str or "InvalidClientTokenId" in err_str or "InvalidAccessKeyId" in err_str:
+                    if is_auth_error:
                         db_config = await db.get(ConfigCloudAccount, config["id"])
                         if db_config:
                             db_config.verified = False

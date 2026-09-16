@@ -208,8 +208,6 @@ export function ResourcesTab({ topFilters, onActionLogged, syncRefreshTrigger })
           }));
           throw e; // Re-throw to be caught by the outer catch block
         }
-
-        toast.success(`Resource is now ${optimisticState.toLowerCase()}`);
       }
     } catch (e) {
       toast.error(`Action Blocked: ${e.response?.data?.detail || 'Operation failed'}`);

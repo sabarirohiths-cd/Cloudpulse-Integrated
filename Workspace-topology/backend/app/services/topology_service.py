@@ -136,9 +136,37 @@ class TopologyService:
         
         if compute_type_upper == 'EC2':
             client = session_aws.client('ec2', region_name=region)
-            paginator = client.get_paginator('describe_instances')
+            eks_client = session_aws.client('eks', region_name=region)
             
             from botocore.exceptions import ClientError
+            
+            # 1. Fetch EKS Clusters and Node Groups
+            eks_hierarchy = {} # cluster -> { node_groups: { ng -> { asgs: [], instances: [] } } }
+            asg_to_ng = {} # asg_name -> (cluster_name, ng_name)
+            
+            try:
+                clusters = eks_client.list_clusters().get('clusters', [])
+                for cluster in clusters:
+                    eks_hierarchy[cluster] = {"name": cluster, "node_groups": {}}
+                    try:
+                        ngs = eks_client.list_nodegroups(clusterName=cluster).get('nodegroups', [])
+                        for ng in ngs:
+                            ng_info = eks_client.describe_nodegroup(clusterName=cluster, nodegroupName=ng).get('nodegroup', {})
+                            asg_names = [asg['name'] for asg in ng_info.get('resources', {}).get('autoScalingGroups', [])]
+                            eks_hierarchy[cluster]["node_groups"][ng] = {
+                                "name": ng,
+                                "asgs": asg_names,
+                                "instances": []
+                            }
+                            for asg in asg_names:
+                                asg_to_ng[asg] = (cluster, ng)
+                    except Exception as e:
+                        print(f"[WARNING] Failed to fetch node groups for EKS cluster {cluster}: {e}")
+            except Exception as e:
+                print(f"[WARNING] Failed to fetch EKS clusters: {e}")
+                
+            paginator = client.get_paginator('describe_instances')
+            flat_resources_for_db = []
             
             try:
                 for page in paginator.paginate():
@@ -146,10 +174,33 @@ class TopologyService:
                         for inst in res.get('Instances', []):
                             tags = {t['Key']: t['Value'] for t in inst.get('Tags', [])}
                             name = tags.get('Name')
+                            state_name = inst.get('State', {}).get('Name', 'unknown')
                             
+                            if state_name in ['terminated', 'shutting-down']:
+                                continue
+                                
                             managed_by = None
                             
-                            # Mapping of AWS tags to their human-readable service names
+                            # Determine if instance belongs to an EKS Node Group via ASG
+                            asg_name = tags.get('aws:autoscaling:groupName')
+                            is_eks_node = False
+                            if asg_name and asg_name in asg_to_ng:
+                                cluster, ng = asg_to_ng[asg_name]
+                                is_eks_node = True
+                                managed_by = f"EKS Node Group: {ng}"
+                                instance_data = {
+                                    "id": inst['InstanceId'],
+                                    "name": name,
+                                    "type": "EC2",
+                                    "state": state_name,
+                                    "region": region,
+                                    "managed_by": managed_by
+                                }
+                                eks_hierarchy[cluster]["node_groups"][ng]["instances"].append(instance_data)
+                                flat_resources_for_db.append(instance_data)
+                                continue # Skip generic grouping if it's placed in EKS hierarchy
+                            
+                            # Fallback generic grouping
                             MANAGED_TAGS_MAP = {
                                 'aws:autoscaling:groupname': 'ASG',
                                 'eks:cluster-name': 'EKS',
@@ -159,11 +210,9 @@ class TopologyService:
                                 'aws:cloudformation:stack-name': 'CFN'
                             }
                             
-                            managed_by = None
                             for tk, tv in tags.items():
                                 tk_lower = tk.lower()
                                 if tk_lower in MANAGED_TAGS_MAP:
-                                    # We prioritize explicit clusters over CFN
                                     if MANAGED_TAGS_MAP[tk_lower] != 'CFN' or not managed_by:
                                         managed_by = f"{MANAGED_TAGS_MAP[tk_lower]}: {tv}"
                                     if MANAGED_TAGS_MAP[tk_lower] != 'CFN':
@@ -172,18 +221,45 @@ class TopologyService:
                                     managed_by = "ECS Worker"
                                     break
                                 
-                            state_name = inst.get('State', {}).get('Name', 'unknown')
-                            if state_name in ['terminated', 'shutting-down']:
-                                continue
-                                
-                            resources.append({
+                            instance_data = {
                                 "id": inst['InstanceId'],
                                 "name": name,
                                 "type": "EC2",
                                 "state": state_name,
                                 "region": region,
                                 "managed_by": managed_by
-                            })
+                            }
+                            resources.append(instance_data)
+                            flat_resources_for_db.append(instance_data)
+                            
+                # Reconstruct resources list to include EKS Clusters -> Node Groups -> Instances
+                for cluster_name, cluster_data in eks_hierarchy.items():
+                    # Only include clusters that actually have node groups or instances
+                    if not cluster_data["node_groups"]:
+                        continue
+                        
+                    cluster_node = {
+                        "id": f"eks-{cluster_name}",
+                        "name": cluster_name,
+                        "type": "EKSCluster",
+                        "state": "active",
+                        "region": region,
+                        "children": []
+                    }
+                    
+                    for ng_name, ng_data in cluster_data["node_groups"].items():
+                        ng_node = {
+                            "id": f"eks-ng-{ng_name}",
+                            "name": ng_name,
+                            "type": "EKSNodeGroup",
+                            "state": "active",
+                            "region": region,
+                            "children": ng_data["instances"]
+                        }
+                        cluster_node["children"].append(ng_node)
+                        
+                    resources.append(cluster_node)
+                    
             except ClientError as e:
                 err_str = str(e)
                 print(f"[WARNING] Skipping EC2 scan in {region} due to AWS error: {err_str}")
@@ -196,7 +272,7 @@ class TopologyService:
             
         async with SessionLocal() as db:
             # 1. Prune nodes that no longer exist in AWS for this compute type, region, and account
-            fetched_resource_ids = {res['id'] for res in resources}
+            fetched_resource_ids = {res['id'] for res in flat_resources_for_db}
             result = await db.execute(select(TopologyNode.id).filter(
                 TopologyNode.type == compute_type_upper, 
                 TopologyNode.region == region,
@@ -210,7 +286,7 @@ class TopologyService:
                 await db.execute(delete(TopologyEdge).where(TopologyEdge.source_id.in_(keys_to_delete) | TopologyEdge.target_id.in_(keys_to_delete)))
                 
             # 2. Add or update fetched resources
-            for res in resources:
+            for res in flat_resources_for_db:
                 metadata = {"Region": res['region']}
                 if res.get('managed_by'):
                     metadata['managed_by'] = res['managed_by']

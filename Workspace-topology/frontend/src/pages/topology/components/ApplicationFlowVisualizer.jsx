@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, memo } from 'react';
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -10,187 +10,184 @@ import {
   useEdgesState,
   Handle,
   Position,
-  MarkerType
+  MarkerType,
+  EdgeLabelRenderer,
+  BaseEdge,
+  getStraightPath,
+  getBezierPath,
+  getSmoothStepPath,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import dagre from '@dagrejs/dagre';
-import { getIcon, getColorClasses, getGlowColors } from '../../../utils/iconMap';
-import { CloudOff, Layers } from 'lucide-react';
+import { getIcon, getColorClasses, getGlowColors, RESOURCE_MAP } from '../../../utils/iconMap';
+import { CloudOff, Layers, AlertTriangle, Zap } from 'lucide-react';
+import TopologyNode from './TopologyNode';
 
-const CustomNode = ({ data, selected }) => {
-  const isRunning = data.status === 'running' || data.status === 'available' || data.status === 'active' || data.status === 'attached';
-  const isCritical = data.health_state === 'CRITICAL';
-  const isRoot = data.isRoot;
-  const isHighlighted = data.isHighlighted;
-  const isGroup = data.metadata?.isGroupNode;
-
-  const colors = getColorClasses(data.type);
-
-  return (
-    <div className="relative">
-      {isGroup && (
-        <>
-          <div className={`absolute top-1.5 left-1.5 w-[260px] h-full rounded-xl border ${isCritical ? 'border-rose-900/50 bg-rose-950/20' : 'border-slate-700 bg-slate-800/50'} z-[-1]`}></div>
-          <div className={`absolute top-3 left-3 w-[260px] h-full rounded-xl border ${isCritical ? 'border-rose-900/30 bg-rose-950/10' : 'border-slate-700 bg-slate-800/30'} z-[-2]`}></div>
-        </>
-      )}
-      <div
-        className={`p-4 rounded-xl border transition-all duration-200 shadow-md ${isHighlighted ? 'border-cyan-400 ring-1 ring-cyan-400/50 shadow-[0_4px_20px_rgba(34,211,238,0.2)] bg-slate-800 z-10'
-          : isCritical ? 'border-rose-500 ring-1 ring-rose-500/50 shadow-[0_4px_20px_rgba(244,63,94,0.2)] bg-rose-950/30 z-10'
-            : isRoot ? 'border-amber-500 ring-1 ring-amber-500/50 shadow-[0_4px_20px_rgba(245,158,11,0.2)] bg-amber-950/20 z-10'
-              : isGroup ? 'border-purple-500/70 shadow-[0_4px_20px_rgba(168,85,247,0.15)] bg-slate-800 z-10'
-                : 'border-slate-700 hover:border-slate-500 hover:shadow-lg bg-slate-800'
-          } w-[260px] flex flex-col relative bg-slate-800`}>
-
-        {isGroup && (
-          <div className={`absolute -top-3 -right-2 ${isCritical ? 'bg-rose-600 border-rose-400' : 'bg-purple-600 border-purple-400'} text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-lg border flex items-center gap-1 z-20`}>
-            <Layers size={10} /> {data.metadata.groupedNodes.length} GROUPED
-          </div>
-        )}
-
-        <Handle type="target" position={Position.Left} className="!bg-zinc-600 !w-2 !h-4 !rounded-sm !-left-1 !border-none" />
-
-        <div className="flex justify-between items-start mb-3">
-          <div
-            className={`w-8 h-8 flex items-center justify-center rounded-full border ${isRunning ? 'border-slate-700 bg-slate-900/80 shadow-inner ' + colors.text : 'border-slate-700 bg-slate-900/50 text-slate-500'}`}
-          >
-            {getIcon(data.type, 16)}
-          </div>
-          <span className="px-2.5 py-0.5 rounded-full bg-slate-900 border border-slate-700 text-xs font-bold text-slate-300 uppercase tracking-wider shadow-sm">{data.type}</span>
-        </div>
-
-        <div className="flex flex-col overflow-hidden gap-1 mb-4">
-          <div className="text-zinc-100 font-bold text-lg truncate" title={data.label}>{data.label}</div>
-        </div>
-
-        <div className="pt-3 border-t border-zinc-800/50 flex items-center gap-2">
-          <div className={`w-2 h-2 rounded-full ${isCritical ? 'bg-red-500' : isRunning ? 'bg-emerald-500' : 'bg-amber-500'}`}></div>
-          <span className={`text-[13px] font-bold tracking-wide ${isCritical ? 'text-red-400' : 'text-zinc-400'}`}>
-            {isCritical ? 'CRITICAL' : data.status || 'UNKNOWN'}
-          </span>
-        </div>
-
-        <Handle type="source" position={Position.Right} className="!bg-zinc-600 !w-2 !h-4 !rounded-sm !-right-1 !border-none" />
-      </div>
-    </div>
-  );
+// ─── Edge color palette by relationship type ────────────────────────────────
+const EDGE_STYLES = {
+  DEFAULT:    { stroke: '#10b981', label: '#94a3b8' },   // emerald (healthy)
+  CRITICAL:   { stroke: '#ef4444', label: '#fb7185' },   // red
+  DEGRADED:   { stroke: '#f59e0b', label: '#fbbf24' },   // amber
+  INACTIVE:   { stroke: '#94a3b8', label: '#94a3b8' },   // slate (unknown/inactive)
+  HOVERED:    { stroke: '#38bdf8', label: '#67e8f9' },   // sky (highlighted path)
 };
+
+const getEdgeStyle = (relation, isIncident, isMain, isHovered, isDimmed) => {
+  if (isIncident) return { ...EDGE_STYLES.CRITICAL, strokeWidth: 2.5, animated: true, opacity: 1 };
+  if (isHovered)  return { ...EDGE_STYLES.HOVERED, strokeWidth: 2.5, animated: false, opacity: 1 };
+  if (isDimmed)   return { ...EDGE_STYLES.INACTIVE, strokeWidth: 1.5, animated: false, opacity: 0.25, strokeDasharray: '4,4' };
+  
+  // Normal edges (healthy)
+  return { ...EDGE_STYLES.DEFAULT, strokeWidth: 2, animated: false, opacity: 0.85 };
+};
+
+// ─── Custom floating edge label ──────────────────────────────────────────────
+const RelationEdge = memo(({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, data, style, markerEnd, label }) => {
+  const offset = data?.offset || 0;
+  
+  // Use Bezier path with X/Y offsets for a beautiful horizontal architecture flow
+  const [edgePath, labelX, labelY] = getBezierPath({ 
+    sourceX, 
+    sourceY: sourceY + offset, 
+    sourcePosition, 
+    targetX, 
+    targetY: targetY + offset, 
+    targetPosition
+  });
+  return (
+    <>
+      <BaseEdge id={id} path={edgePath} markerEnd={markerEnd} style={style} />
+      {label && (
+        <EdgeLabelRenderer>
+          <div
+            className="nodrag nopan absolute pointer-events-none"
+            style={{ transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)` }}
+          >
+            <span
+              className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded"
+              style={{
+                background: '#0d1117',
+                color: data?.labelColor || '#94a3b8',
+                border: `1px solid ${data?.borderColor || '#2d333b'}`,
+              }}
+            >
+              {label}
+            </span>
+          </div>
+        </EdgeLabelRenderer>
+      )}
+    </>
+  );
+});
 
 const nodeTypes = {
-  custom: CustomNode,
+  topologyNode: TopologyNode,
 };
 
+const edgeTypes = {
+  relation: RelationEdge,
+};
+
+// ─── Dagre layout ────────────────────────────────────────────────────────────
 const getLayoutedElements = (nodes, edges, direction = 'LR') => {
   const dagreGraph = new dagre.graphlib.Graph();
   dagreGraph.setDefaultEdgeLabel(() => ({}));
-
-  const nodeWidth = 280;
-  const nodeHeight = 120;
-
-  dagreGraph.setGraph({ rankdir: direction, nodesep: 60, ranksep: 140 });
+  dagreGraph.setGraph({ rankdir: direction, nodesep: 80, ranksep: 180, marginx: 40, marginy: 40 });
 
   nodes.forEach((node) => {
-    dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
+    const isRoot = node.data?.isRoot;
+    const isGroup = node.data?.metadata?.isGroupNode;
+    const w = isRoot ? 220 : isGroup ? 260 : 200;
+    const h = isRoot ? 96 : isGroup ? 88 : 72;
+    dagreGraph.setNode(node.id, { width: w, height: h });
   });
 
-  edges.forEach((edge) => {
-    dagreGraph.setEdge(edge.source, edge.target);
-  });
-
+  edges.forEach((edge) => dagreGraph.setEdge(edge.source, edge.target));
   dagre.layout(dagreGraph);
 
   const layoutedNodes = nodes.map((node) => {
-    const nodeWithPosition = dagreGraph.node(node.id);
+    const { x, y } = dagreGraph.node(node.id);
+    const isRoot = node.data?.isRoot;
+    const isGroup = node.data?.metadata?.isGroupNode;
+    const w = isRoot ? 220 : isGroup ? 260 : 200;
+    const h = isRoot ? 96 : isGroup ? 88 : 72;
+    
+    // Set handle positions based on layout direction
+    const isHorizontal = direction === 'LR';
+    
     return {
       ...node,
-      targetPosition: Position.Left,
-      sourcePosition: Position.Right,
-      position: {
-        x: nodeWithPosition.x - nodeWidth / 2,
-        y: nodeWithPosition.y - nodeHeight / 2,
-      },
+      targetPosition: isHorizontal ? Position.Left : Position.Top,
+      sourcePosition: isHorizontal ? Position.Right : Position.Bottom,
+      position: { x: x - w / 2, y: y - h / 2 },
     };
   });
 
   return { nodes: layoutedNodes, edges };
 };
 
-function FlowVisualizerContent({ data, focusNodeId, onNodeClick, isSidebarOpen }) {
+function FlowVisualizerContent({ data, focusNodeId, onNodeClick, isSidebarOpen, groupResources = true }) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const { setCenter, getNode, fitView } = useReactFlow();
+  const { setCenter, getNode, fitView }  = useReactFlow();
   const [lastCenteredNodeId, setLastCenteredNodeId] = useState(null);
   const [hoveredNodeId, setHoveredNodeId] = useState(null);
 
-  // Re-center graph when internal sidebar toggles
+  // Re-fit on sidebar toggle
   useEffect(() => {
-    // Timeout allows CSS transition (width change) to finish before centering
-    const timeout = setTimeout(() => {
-      if (nodes.length > 0) {
-        fitView({ padding: 0.1, duration: 600, maxZoom: 1.2 });
-      }
-    }, 350);
-    return () => clearTimeout(timeout);
+    const t = setTimeout(() => { if (nodes.length > 0) fitView({ padding: 0.15, duration: 600, maxZoom: 1 }); }, 350);
+    return () => clearTimeout(t);
   }, [isSidebarOpen, fitView, nodes.length]);
 
-  // Re-center graph when window resizes (or when main App.jsx sidebar toggles and dispatches resize)
+  // Re-fit on window resize
   useEffect(() => {
-    const handleResize = () => {
-      if (nodes.length > 0) {
-        fitView({ padding: 0.1, duration: 600, maxZoom: 1.2 });
-      }
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    const h = () => { if (nodes.length > 0) fitView({ padding: 0.15, duration: 500, maxZoom: 1 }); };
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
   }, [fitView, nodes.length]);
 
+  // Focus pan to selected node
   useEffect(() => {
     if (focusNodeId && focusNodeId !== lastCenteredNodeId && nodes.length > 0) {
-      // Wait for React Flow to fully render and measure node dimensions in the DOM before fitting
-      const timeout = setTimeout(() => {
+      const t = setTimeout(() => {
         window.requestAnimationFrame(() => {
           const node = getNode(focusNodeId);
           if (node) {
-            const x = node.position.x + (node.measured?.width || 280) / 2;
-            const y = node.position.y + (node.measured?.height || 120) / 2;
-            setCenter(x, y, { zoom: 1.2, duration: 800 });
+            const x = node.position.x + (node.measured?.width  || 260) / 2;
+            const y = node.position.y + (node.measured?.height || 110) / 2;
+            setCenter(x, y, { zoom: 1.1, duration: 800 });
           } else {
-            fitView({ padding: 0.2, duration: 800, maxZoom: 1.1 });
+            fitView({ padding: 0.2, duration: 800, maxZoom: 1 });
           }
         });
         setLastCenteredNodeId(focusNodeId);
       }, 400);
-      return () => clearTimeout(timeout);
+      return () => clearTimeout(t);
     }
   }, [focusNodeId, nodes, fitView, setCenter, getNode, lastCenteredNodeId]);
 
-  // Also reset the tracker if data completely changes (new trace)
-  useEffect(() => {
-    setLastCenteredNodeId(null);
-  }, [data]);
+  useEffect(() => { setLastCenteredNodeId(null); }, [data]);
 
+  // Build nodes and edges when data changes
   useEffect(() => {
     if (!data || !data.nodes) return;
 
     let rawNodes = [...data.nodes];
     let rawEdges = [...(data.edges || [])];
 
+    // ── Group nodes with 5+ same-type same-neighborhood (existing logic) ──
     const GROUPABLE_TYPES = ['CLOUDWATCH_ALARM', 'TARGET_GROUP'];
     const THRESHOLD = 5;
-
-    // Groupable logic
-    const groupableNodes = rawNodes.filter(n => GROUPABLE_TYPES.includes(n.type));
+    const groupableNodes = groupResources ? rawNodes.filter(n => GROUPABLE_TYPES.includes(n.type)) : [];
 
     const getNeighborhoodHash = (nodeId) => {
-      const incidentEdges = rawEdges.filter(e => e.source === nodeId || e.target === nodeId);
-      const endpoints = incidentEdges.map(e => e.source === nodeId ? `TARGET:${e.target}` : `SOURCE:${e.source}`);
-      return endpoints.sort().join('|');
+      const inc = rawEdges.filter(e => e.source === nodeId || e.target === nodeId);
+      return inc.map(e => e.source === nodeId ? `T:${e.target}` : `S:${e.source}`).sort().join('|');
     };
 
     const groups = {};
     groupableNodes.forEach(n => {
-      const hash = getNeighborhoodHash(n.id);
-      const key = `${n.type}::${hash}`;
+      const key = `${n.type}::${getNeighborhoodHash(n.id)}`;
       if (!groups[key]) groups[key] = [];
       groups[key].push(n);
     });
@@ -199,218 +196,224 @@ function FlowVisualizerContent({ data, focusNodeId, onNodeClick, isSidebarOpen }
     const finalEdges = [...rawEdges];
     const nodesToRemove = new Set();
 
-    Object.entries(groups).forEach(([key, members]) => {
+    Object.entries(groups).forEach(([, members]) => {
       if (members.length >= THRESHOLD) {
-        const type = members[0].type;
-        // Generate a safe id for the group node (alphanumeric)
+        const type    = members[0].type;
         const groupId = `group_${type}_${members[0].id.replace(/[^a-zA-Z0-9]/g, '_')}`;
-
         const hasCritical = members.some(m => m.health_state === 'CRITICAL');
         const hasDegraded = members.some(m => m.health_state === 'DEGRADED');
-        const groupHealth = hasCritical ? 'CRITICAL' : hasDegraded ? 'DEGRADED' : 'HEALTHY';
 
-        const groupNode = {
-          id: groupId,
-          type: type,
-          label: `${members.length} ${type.replace(/_/g, ' ')}S`,
+        finalNodes.push({
+          id: groupId, type, label: `${members.length} ${type.replace(/_/g, ' ')}S`,
           status: 'active',
-          health_state: groupHealth,
-          diagnostic: hasCritical ? `${members.filter(m => m.health_state === 'CRITICAL').length} items are in CRITICAL state.` : undefined,
-          metadata: {
-            groupedNodes: members,
-            isGroupNode: true
-          }
-        };
-
-        finalNodes.push(groupNode);
+          health_state: hasCritical ? 'CRITICAL' : hasDegraded ? 'DEGRADED' : 'HEALTHY',
+          diagnostic: hasCritical ? `${members.filter(m => m.health_state === 'CRITICAL').length} items CRITICAL` : undefined,
+          metadata: { groupedNodes: members, isGroupNode: true },
+        });
         members.forEach(m => nodesToRemove.add(m.id));
 
-        // Rewire edges
-        const sampleEdges = rawEdges.filter(e => e.source === members[0].id || e.target === members[0].id);
-        sampleEdges.forEach(e => {
-          const newEdge = { ...e };
-          if (newEdge.source === members[0].id) newEdge.source = groupId;
-          if (newEdge.target === members[0].id) newEdge.target = groupId;
-          newEdge.id = `group_edge_${newEdge.source}_${newEdge.target}`;
-
-          const memberIds = new Set(members.map(m => m.id));
-          const allMemberEdges = rawEdges.filter(me =>
-            (me.source === e.source && memberIds.has(me.target)) ||
-            (me.target === e.target && memberIds.has(me.source)) ||
-            (me.source === e.target && memberIds.has(me.source))
-          );
-
-          if (allMemberEdges.some(me => me.health_state === 'CRITICAL')) {
-            newEdge.health_state = 'CRITICAL';
-          }
-
-          finalEdges.push(newEdge);
+        // Rewire edges from first member to group
+        rawEdges.filter(e => e.source === members[0].id || e.target === members[0].id).forEach(e => {
+          const ne = { ...e };
+          if (ne.source === members[0].id) ne.source = groupId;
+          if (ne.target === members[0].id) ne.target = groupId;
+          ne.id = `ge_${ne.source}_${ne.target}`;
+          finalEdges.push(ne);
         });
       }
     });
 
-    rawNodes.forEach(n => {
-      if (!nodesToRemove.has(n.id)) finalNodes.push(n);
-    });
-
+    rawNodes.forEach(n => { if (!nodesToRemove.has(n.id)) finalNodes.push(n); });
     const processedEdges = finalEdges.filter(e => !nodesToRemove.has(e.source) && !nodesToRemove.has(e.target));
 
-    const rfNodes = finalNodes.map(n => ({
-      id: n.id,
-      type: 'custom',
-      data: {
-        label: n.label,
-        type: n.type,
-        status: n.status,
-        metadata: n.metadata,
-        health_state: n.health_state,
-        diagnostic: n.diagnostic,
-        isRoot: n.id === data.compute_id || n.id === data.last_compute_id,
-        isHighlighted: n.id === hoveredNodeId
-      },
-      position: { x: 0, y: 0 }
-    }));
+    // ── Map to ReactFlow nodes with visual tier ──
+    const rootId = data.compute_id || data.last_compute_id;
 
-    const rfEdges = processedEdges.map((e, idx) => {
-      const sourceNode = finalNodes.find(n => n.id === e.source);
-      const targetNode = finalNodes.find(n => n.id === e.target);
-      const isIncident = e.health_state === 'CRITICAL' || e.health_state === 'BLOCKED' || (targetNode?.health_state === 'CRITICAL' && sourceNode?.health_state !== 'CRITICAL') || (e.relation === 'TARGETS' && sourceNode?.health_state === 'CRITICAL');
-
-      const isMainEdge = sourceNode?.isRoot || targetNode?.isRoot;
+    const rfNodes = finalNodes.map(n => {
+      const isRoot      = n.id === rootId;
+      const isGroupNode = n.metadata?.isGroupNode;
 
       return {
-        id: `e-${e.source}-${e.target}-${idx}`,
-        source: e.source,
-        target: e.target,
-        label: e.relation,
-        type: 'default', // 'default' in ReactFlow is usually bezier. Or 'bezier'
-        animated: isIncident || true,
-        style: isIncident ? { stroke: '#f43f5e', strokeWidth: 2, strokeDasharray: '5,5' } : isMainEdge ? { stroke: '#f59e0b', strokeWidth: 2 } : { stroke: '#64748b', strokeWidth: 2 },
-        labelStyle: { fill: isIncident ? '#f43f5e' : isMainEdge ? '#fbbf24' : '#cbd5e1', fontWeight: 700, fontSize: 13 },
-        labelBgStyle: { fill: '#0f172a', fillOpacity: 0.95 },
-        labelBgPadding: [6, 4],
-        labelBgBorderRadius: 4,
-        markerEnd: {
-          type: MarkerType.ArrowClosed,
-          color: isIncident ? '#f43f5e' : isMainEdge ? '#f59e0b' : '#64748b',
-        },
+        id:   n.id,
+        type: 'topologyNode',
         data: {
-          health_state: e.health_state,
-          diagnostic: e.diagnostic
-        }
+          label:       n.label,
+          type:        n.type,
+          status:      n.status,
+          metadata:    n.metadata,
+          health_state: n.health_state,
+          diagnostic:  n.diagnostic,
+          isRoot,
+        },
+        position: { x: 0, y: 0 },
       };
     });
 
-    // Sort nodes and edges deterministically to prevent layout jitter on refresh
-    // Grouping by root status, then type, then id ensures a beautiful semantic arrangement
+    // Sort: root first, then by type alphabetically
     rfNodes.sort((a, b) => {
       if (a.data.isRoot !== b.data.isRoot) return a.data.isRoot ? -1 : 1;
-      if (a.data.type !== b.data.type) return a.data.type.localeCompare(b.data.type);
-      return a.id.localeCompare(b.id);
+      return (a.data.type || '').localeCompare(b.data.type || '');
+    });
+
+    // Count parallel edges to offset them
+    const edgeCounts = {};
+    const processedEdgesWithIndex = processedEdges.map(e => {
+        const pairKey = [e.source, e.target].sort().join('|');
+        if (edgeCounts[pairKey] === undefined) {
+            edgeCounts[pairKey] = 0;
+        }
+        edgeCounts[pairKey]++;
+        return { ...e, pairIndex: edgeCounts[pairKey] - 1, totalInPair: 0 }; // totalInPair set next
+    });
+    
+    // Update total counts
+    processedEdgesWithIndex.forEach(e => {
+        const pairKey = [e.source, e.target].sort().join('|');
+        e.totalInPair = edgeCounts[pairKey];
+    });
+
+    // ── Map to ReactFlow edges (proper style, NO blanket animation) ──
+    const rfEdges = processedEdgesWithIndex.map((e, idx) => {
+      const srcNode = finalNodes.find(n => n.id === e.source);
+      const tgtNode = finalNodes.find(n => n.id === e.target);
+
+      const isIncident = e.health_state === 'CRITICAL' || e.health_state === 'BLOCKED'
+        || tgtNode?.health_state === 'CRITICAL' || srcNode?.health_state === 'CRITICAL';
+      const isMain = srcNode?.id === rootId || tgtNode?.id === rootId;
+
+      const isDegradedEdge = e.health_state === 'DEGRADED' || tgtNode?.health_state === 'DEGRADED' || srcNode?.health_state === 'DEGRADED';
+
+      const style = getEdgeStyle(e.relation, isIncident, isMain, false, false);
+
+      // Apply strokeDasharray: Degraded gets dashed lines, others get solid or their specific definitions
+      let strokeDasharray = undefined;
+      if (isDegradedEdge && !isIncident) strokeDasharray = '6,4';
+      if (style.strokeDasharray) strokeDasharray = style.strokeDasharray; // Overridden by getEdgeStyle (e.g., dimmed)
+
+      return {
+        id:   `e-${e.source}-${e.target}-${idx}`,
+        type: 'relation',
+        source: e.source,
+        target: e.target,
+        label:  e.relation || '',
+        animated: style.animated,
+        style: {
+          stroke:          style.stroke,
+          strokeWidth:     style.strokeWidth,
+          strokeDasharray: strokeDasharray,
+          opacity:         style.opacity,
+        },
+        markerEnd: {
+          type:  MarkerType.ArrowClosed,
+          color: style.stroke,
+          width: 16,
+          height: 16,
+        },
+        data: {
+          health_state: e.health_state,
+          diagnostic:   e.diagnostic,
+          labelColor:   style.label,
+          borderColor:  style.stroke,
+          isIncident,
+          isMain,
+          offset: e.totalInPair > 1 ? (e.pairIndex - (e.totalInPair - 1) / 2) * 25 : 0
+        },
+      };
     });
 
     rfEdges.sort((a, b) => {
-      const sourceCompare = a.source.localeCompare(b.source);
-      return sourceCompare !== 0 ? sourceCompare : a.target.localeCompare(b.target);
+      const sc = a.source.localeCompare(b.source);
+      return sc !== 0 ? sc : a.target.localeCompare(b.target);
     });
 
-    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(rfNodes, rfEdges, 'LR');
+    // Default to LR for a cleaner horizontal architecture layout
+    const { nodes: lNodes, edges: lEdges } = getLayoutedElements(rfNodes, rfEdges, 'LR');
+    setNodes(lNodes);
+    setEdges(lEdges);
+  }, [data, setNodes, setEdges, groupResources]);
 
-    setNodes(layoutedNodes);
-    setEdges(layoutedEdges);
-  }, [data, setNodes, setEdges]);
-
-  // Handle edge highlighting when a node is hovered
+  // ── Edge hover-dimming effect ──────────────────────────────────────────────
   useEffect(() => {
-    if (!data || !data.nodes) return;
-
+    if (!data?.nodes) return;
     setEdges(eds => eds.map(e => {
-      const sourceNode = data.nodes.find(n => n.id === e.source);
-      const targetNode = data.nodes.find(n => n.id === e.target);
-      const isIncident = e.data?.health_state === 'CRITICAL' || e.data?.health_state === 'BLOCKED' || (targetNode?.health_state === 'CRITICAL' && sourceNode?.health_state !== 'CRITICAL') || (e.relation === 'TARGETS' && sourceNode?.health_state === 'CRITICAL');
+      const isConnected = hoveredNodeId && (e.source === hoveredNodeId || e.target === hoveredNodeId);
+      const isDimmed    = hoveredNodeId && !isConnected;
+      const isHovered   = isConnected;
+      const isIncident  = e.data?.isIncident;
+      const isMain      = e.data?.isMain;
 
-      const isMainEdge = sourceNode?.isRoot || targetNode?.isRoot;
-
-      let strokeColor = isMainEdge ? '#f59e0b' : '#64748b';
-      let strokeWidth = 2;
-      let labelColor = isMainEdge ? '#fbbf24' : '#94a3b8';
-
-      if (isIncident) {
-        strokeColor = '#f43f5e';
-        labelColor = '#f43f5e';
-      } else if (hoveredNodeId && (hoveredNodeId === e.source || hoveredNodeId === e.target)) {
-        strokeColor = '#22d3ee'; // cyan-400
-        strokeWidth = 3;
-        labelColor = '#67e8f9';
-      } else if (hoveredNodeId) {
-        // Dim non-connected edges if ANY node is hovered
-        strokeColor = '#334155';
-        strokeWidth = 1;
-        labelColor = '#475569';
-      }
-
+      const style = getEdgeStyle(e.label, isIncident, isMain, isHovered, isDimmed);
       return {
         ...e,
-        style: { ...e.style, stroke: strokeColor, strokeWidth },
-        labelStyle: { ...e.labelStyle, fill: labelColor },
-        markerEnd: { ...e.markerEnd, color: strokeColor }
+        animated: style.animated,
+        style: {
+          ...e.style,
+          stroke:      style.stroke,
+          strokeWidth: style.strokeWidth,
+          opacity:     style.opacity,
+        },
+        markerEnd: { ...e.markerEnd, color: style.stroke },
+        data: { ...e.data, labelColor: style.label, borderColor: style.stroke },
       };
     }));
   }, [hoveredNodeId, data, setEdges]);
 
+  // Empty state
   if (!data || !data.nodes || data.nodes.length === 0) {
     return (
-      <div className="w-full h-full flex flex-col items-center justify-center text-slate-500 bg-[#0a0a0f] gap-4">
-        <CloudOff size={48} className="opacity-20" />
-        <p>No trace data available. Select a compute resource.</p>
+      <div className="w-full h-full flex flex-col items-center justify-center gap-5" style={{ background: '#0a0a0f' }}>
+        <div className="relative">
+          <div className="w-20 h-20 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid #2d333b' }}>
+            <CloudOff size={36} className="text-zinc-600" />
+          </div>
+        </div>
+        <div className="text-center">
+          <p className="text-[14px] font-semibold text-zinc-400">No topology data</p>
+          <p className="text-[12px] text-zinc-600 mt-1">Select a compute resource from the sidebar to trace its flow</p>
+        </div>
       </div>
     );
   }
 
-  const handleNodeClick = (_, node) => {
-    setHoveredNodeId(null);
-    if (onNodeClick) {
-      onNodeClick(node);
-    }
-  };
-
   return (
-    <div className="w-full h-full bg-[#0a0a0f]">
+    <div className="w-full h-full" style={{ background: '#0a0a0f' }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
-        onNodeClick={handleNodeClick}
+        onNodeClick={(_, node) => { setHoveredNodeId(null); if (onNodeClick) onNodeClick(node); }}
         onNodeMouseEnter={(_, node) => setHoveredNodeId(node.id)}
         onNodeMouseLeave={() => setHoveredNodeId(null)}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         fitView
-        fitViewOptions={{ padding: 0.1, maxZoom: 1.2 }}
-        minZoom={0.1}
-        maxZoom={1.5}
+        fitViewOptions={{ padding: 0.15, maxZoom: 1 }}
+        minZoom={0.05}
+        maxZoom={2}
         nodesDraggable={false}
         nodesConnectable={false}
         elementsSelectable={true}
-        panOnScroll={false}
-        className="bg-transparent [&>.react-flow__renderer>.react-flow__viewport]:transition-transform [&>.react-flow__renderer>.react-flow__viewport]:duration-150 [&>.react-flow__renderer>.react-flow__viewport]:ease-out"
+        className="bg-transparent"
       >
-        <Background color="#475569" gap={24} size={1.5} />
+        {/* Subtle dot grid */}
+        <Background color="#2d333b" gap={28} size={1} />
+
+        {/* MiniMap */}
         <MiniMap
           nodeColor={(n) => {
-            if (n.data?.health_state === 'CRITICAL') return '#f43f5e';
-            if (n.data?.isRoot) return '#f59e0b';
-            if (n.data?.isHighlighted) return '#22d3ee';
-            return '#1e293b';
+            if (n.data?.health_state === 'CRITICAL') return '#ef4444';
+            if (n.data?.health_state === 'DEGRADED') return '#f59e0b';
+            return '#10b981'; // Healthy default
           }}
-          maskColor="rgba(0, 0, 0, 0.6)"
-          maskStrokeColor="#94a3b8"
-          maskStrokeWidth={1}
-          style={{ backgroundColor: '#0f172a', width: 120, height: 80 }}
-          className="!bg-slate-900 border border-slate-700 rounded-lg shadow-2xl overflow-hidden"
+          maskColor="rgba(0,0,0,0.65)"
+          style={{ backgroundColor: '#0d1117', width: 130, height: 85 }}
+          className="!bg-[#0d1117] border border-[#2d333b] rounded-xl shadow-2xl overflow-hidden"
         />
+
+        {/* Controls */}
         <Controls
-          className="bg-[#161b22] border-zinc-800 shadow-xl"
+          className="!bg-[#161a22] !border-[#2d333b] shadow-xl"
           showInteractive={false}
         />
       </ReactFlow>

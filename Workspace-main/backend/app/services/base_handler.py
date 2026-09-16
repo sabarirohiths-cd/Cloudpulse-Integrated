@@ -43,6 +43,11 @@ class ControlResourceHandler(ABC):
             return success_return if success_return is not None else res
         except ClientError as e:
             err_msg = parse_aws_client_error(e)
+            
+            # DO NOT SWALLOW FATAL AUTHENTICATION ERRORS! Let them bubble up so the scanner can abort the sync.
+            if any(auth_err in err_msg for auth_err in ["ExpiredToken", "RequestExpired", "InvalidClientTokenId", "InvalidAccessKeyId", "AuthFailure", "AWS Credentials are invalid or expired."]):
+                raise e
+                
             if error_return_type == "list":
                 self.log_once(self.__class__.__name__, err_msg)
                 return []

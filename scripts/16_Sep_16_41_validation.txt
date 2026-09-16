@@ -1,0 +1,104 @@
+AWS Read-Only Security Validation Report
+Generated On: 2026-09-16 16:41:45
+--------------------------------------------------
+
+✅ STATUS: PASS (Read-Only Workspaces verified)
+
+Explanation:
+• All scanned code files in the AWS monitoring workspaces were verified.
+• No AWS state-modifying methods (e.g., create, delete, update, modify, put) were found outside of Control modules.
+
+--------------------------------------------------
+
+ℹ️ CONTROL MODULE USAGES (ALLOWED)
+
+The following modifying API calls were detected, but are located in designated Control Modules (e.g. Workspace-main).
+These are permitted but logged for auditing purposes.
+
+  -> File: Workspace-main\backend\app\api\control.py (Line 63)
+     Code: updated_count = await control_repository.update_visibility(db, payload.resource_ids, payload.is_visible)
+
+  -> File: Workspace-main\backend\app\api\control.py (Line 128)
+     Code: res = await control_service.start_resource(config.provider, creds, payload.region, payload.service_type, payload.resource_id, saved_config=saved_config)
+
+  -> File: Workspace-main\backend\app\api\control.py (Line 130)
+     Code: res = await control_service.stop_resource(config.provider, creds, payload.region, payload.service_type, payload.resource_id, saved_config=saved_config)
+
+  -> File: Workspace-main\backend\app\core\scheduler.py (Line 91)
+     Code: await control_service.start_resource(config.provider, creds, sched.region, sched.service_type, sched.resource_id)
+
+  -> File: Workspace-main\backend\app\core\scheduler.py (Line 102)
+     Code: await control_service.stop_resource(config.provider, creds, sched.region, sched.service_type, sched.resource_id)
+
+  -> File: Workspace-main\backend\app\services\aws\handlers\direct_power\documentdb_handler.py (Line 36)
+     Code: client.start_db_cluster(DBClusterIdentifier=native_id)
+
+  -> File: Workspace-main\backend\app\services\aws\handlers\direct_power\documentdb_handler.py (Line 40)
+     Code: client.stop_db_cluster(DBClusterIdentifier=native_id)
+
+  -> File: Workspace-main\backend\app\services\aws\handlers\direct_power\ec2_handler.py (Line 35)
+     Code: client.start_instances(InstanceIds=[native_id])
+
+  -> File: Workspace-main\backend\app\services\aws\handlers\direct_power\ec2_handler.py (Line 45)
+     Code: client.stop_instances(InstanceIds=[native_id])
+
+  -> File: Workspace-main\backend\app\services\aws\handlers\direct_power\rds_handler.py (Line 43)
+     Code: client.start_db_cluster(DBClusterIdentifier=native_id)
+
+  -> File: Workspace-main\backend\app\services\aws\handlers\direct_power\rds_handler.py (Line 45)
+     Code: client.start_db_instance(DBInstanceIdentifier=native_id)
+
+  -> File: Workspace-main\backend\app\services\aws\handlers\direct_power\rds_handler.py (Line 50)
+     Code: client.stop_db_cluster(DBClusterIdentifier=native_id)
+
+  -> File: Workspace-main\backend\app\services\aws\handlers\direct_power\rds_handler.py (Line 52)
+     Code: client.stop_db_instance(DBInstanceIdentifier=native_id)
+
+  -> File: Workspace-main\backend\app\services\aws\handlers\direct_power\sagemaker_handler.py (Line 33)
+     Code: client.start_notebook_instance(NotebookInstanceName=native_id)
+
+  -> File: Workspace-main\backend\app\services\aws\handlers\direct_power\sagemaker_handler.py (Line 37)
+     Code: client.stop_notebook_instance(NotebookInstanceName=native_id)
+
+  -> File: Workspace-main\backend\app\services\aws\handlers\direct_power\workspaces_handler.py (Line 36)
+     Code: client.start_workspaces(StartWorkspaceRequests=[{'WorkspaceId': native_id}])
+
+  -> File: Workspace-main\backend\app\services\aws\handlers\direct_power\workspaces_handler.py (Line 40)
+     Code: client.stop_workspaces(StopWorkspaceRequests=[{'WorkspaceId': native_id}])
+
+  -> File: Workspace-main\backend\app\services\aws\handlers\scale_to_zero\asg_handler.py (Line 69)
+     Code: client.update_auto_scaling_group(
+
+  -> File: Workspace-main\backend\app\services\aws\handlers\scale_to_zero\asg_handler.py (Line 97)
+     Code: client.update_auto_scaling_group(
+
+  -> File: Workspace-main\backend\app\services\aws\handlers\scale_to_zero\beanstalk_handler.py (Line 84)
+     Code: autoscaling.update_auto_scaling_group(
+
+  -> File: Workspace-main\backend\app\services\aws\handlers\scale_to_zero\beanstalk_handler.py (Line 122)
+     Code: autoscaling.update_auto_scaling_group(
+
+  -> File: Workspace-main\backend\app\services\aws\handlers\scale_to_zero\ecs_handler.py (Line 54)
+     Code: ecs.update_service(cluster=cluster_name, service=service_name, desiredCount=0)
+
+  -> File: Workspace-main\backend\app\services\aws\handlers\scale_to_zero\ecs_handler.py (Line 131)
+     Code: autoscaling.update_auto_scaling_group(
+
+  -> File: Workspace-main\backend\app\services\aws\handlers\scale_to_zero\ecs_handler.py (Line 187)
+     Code: autoscaling.update_auto_scaling_group(
+
+  -> File: Workspace-main\backend\app\services\aws\handlers\scale_to_zero\ecs_handler.py (Line 196)
+     Code: ecs.update_service(cluster=cluster_name, service=service_name, desiredCount=prev_ecs_desired)
+
+  -> File: Workspace-main\backend\app\services\aws\handlers\scale_to_zero\eks_handler.py (Line 86)
+     Code: autoscaling.update_auto_scaling_group(
+
+  -> File: Workspace-main\backend\app\services\aws\handlers\scale_to_zero\eks_handler.py (Line 96)
+     Code: client.update_nodegroup_config(
+
+  -> File: Workspace-main\backend\app\services\aws\handlers\scale_to_zero\eks_handler.py (Line 161)
+     Code: autoscaling.update_auto_scaling_group(
+
+  -> File: Workspace-main\backend\app\services\aws\handlers\scale_to_zero\eks_handler.py (Line 186)
+     Code: client.update_nodegroup_config(
+

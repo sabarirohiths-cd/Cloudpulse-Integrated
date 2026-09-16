@@ -1,149 +1,182 @@
 import React from 'react';
-import { 
-  Server, Database, Shield, Lock, Network, Cloud, 
-  Box, Zap, Activity, Globe, HardDrive, Key, Layers
-} from 'lucide-react';
+import {
+  AmazonApiGateway,
+  AmazonCloudFront,
+  AmazonCloudWatch,
+  AmazonDocumentDb,
+  AmazonDynamoDb,
+  AmazonEc2,
+  AmazonElastiCache,
+  AmazonElasticBlockStore,
+  AmazonElasticContainerService,
+  AmazonElasticKubernetesService,
+  AmazonOpenSearchService,
+  AmazonRds,
+  AmazonRedshift,
+  AmazonRoute53,
+  AmazonSageMaker,
+  AmazonSimpleNotificationService,
+  AmazonSimpleQueueService,
+  AmazonSimpleStorageService,
+  AmazonVirtualPrivateCloud,
+  AwsElasticBeanstalk,
+  AwsIdentityAndAccessManagement,
+  AwsLambda,
+  AwsNetworkFirewall,
+  AwsShield,
+  AwsTransitGateway,
+  ElasticLoadBalancing
+} from '@aws-icons/react/architecture-service';
+import { AmazonVpcInternetGateway } from '@aws-icons/react/resource';
 
-// Tailwind Themes to preserve explicit class strings for PurgeCSS
+// Tailwind Themes mapping strictly to Service Colors (No Health Colors)
 const themes = {
-  computeGreen: { text: 'text-green-400', border: 'hover:border-green-500/50', borderStatic: 'border-green-500/30' },
-  computeEmerald: { text: 'text-emerald-400', border: 'hover:border-emerald-500/50', borderStatic: 'border-emerald-500/30' },
-  dbSky: { text: 'text-sky-400', border: 'hover:border-sky-500/50', borderStatic: 'border-sky-500/30' },
-  storageYellow: { text: 'text-yellow-400', border: 'hover:border-yellow-500/50', borderStatic: 'border-yellow-500/30' },
-  mlOrange: { text: 'text-orange-400', border: 'hover:border-orange-500/50', borderStatic: 'border-orange-500/30' },
-  secRed: { text: 'text-red-400', border: 'hover:border-red-500/50', borderStatic: 'border-red-500/30' },
-  secLightRed: { text: 'text-red-300', border: 'hover:border-red-400/50', borderStatic: 'border-red-400/30' },
-  iamPink: { text: 'text-pink-400', border: 'hover:border-pink-500/50', borderStatic: 'border-pink-500/30' },
-  netCyan: { text: 'text-cyan-400', border: 'hover:border-cyan-500/50', borderStatic: 'border-cyan-500/30' },
-  netLightCyan: { text: 'text-cyan-300', border: 'hover:border-cyan-400/50', borderStatic: 'border-cyan-400/30' },
-  vpcPurple: { text: 'text-purple-400', border: 'hover:border-purple-500/50', borderStatic: 'border-purple-500/30' },
-  lbIndigo: { text: 'text-indigo-400', border: 'hover:border-indigo-500/50', borderStatic: 'border-indigo-500/30' },
-  miscLightSky: { text: 'text-sky-300', border: 'hover:border-sky-400/50', borderStatic: 'border-sky-400/30' },
-  defaultGray: { text: 'text-gray-400', border: 'hover:border-gray-500/50', borderStatic: 'border-gray-500/30' },
-  ebsPurple: { text: 'text-purple-400', border: 'hover:border-purple-500/50', borderStatic: 'border-purple-500/30' },
-  iamYellow: { text: 'text-yellow-400', border: 'hover:border-yellow-500/50', borderStatic: 'border-yellow-500/30' },
-  asgOrange: { text: 'text-orange-400', border: 'hover:border-orange-500/50', borderStatic: 'border-orange-500/30' },
+  route53:      { text: 'text-violet-500',  bg: '#8B5CF6' },
+  cloudFront:   { text: 'text-indigo-500',  bg: '#6366F1' },
+  loadBalancer: { text: 'text-blue-500',    bg: '#3B82F6' },
+  targetGroup:  { text: 'text-rose-500',    bg: '#F43F5E' },
+  compute:      { text: 'text-orange-500',  bg: '#F97316' },
+  network:      { text: 'text-cyan-500',    bg: '#06B6D4' },
+  security:     { text: 'text-emerald-500', bg: '#10B981' },
+  database:     { text: 'text-blue-500',    bg: '#3B82F6' },
+  storage:      { text: 'text-emerald-500', bg: '#10B981' },
+  monitoring:   { text: 'text-pink-500',    bg: '#EC4899' },
+  external:     { text: 'text-slate-400',   bg: '#94A3B8' },
 };
 
-// Centralized mapping of all AWS resource types mapped to icons and colors
+// Centralized mapping of all AWS resource types (keys must be fully lowercase, no spaces or underscores)
 export const RESOURCE_MAP = {
   // Compute
-  'Instance': { icon: Server, ...themes.computeGreen },
-  'EC2': { icon: Server, ...themes.computeGreen },
-  'EKSCluster': { icon: Box, ...themes.computeEmerald },
-  'ECSCluster': { icon: Box, ...themes.computeEmerald },
-  'AutoScalingGroup': { icon: Box, ...themes.computeEmerald },
-  'ASG': { icon: Layers, ...themes.asgOrange },
-  'ElasticBeanstalkEnvironment': { icon: Box, ...themes.computeEmerald },
-  'BatchComputeEnvironment': { icon: Box, ...themes.computeEmerald },
-  'AppRunnerVpcConnector': { icon: Box, ...themes.computeEmerald },
-  'WorkSpace': { icon: Box, ...themes.computeEmerald },
+  'instance': { icon: AmazonEc2, ...themes.compute },
+  'ec2': { icon: AmazonEc2, ...themes.compute },
+  'ekscluster': { icon: AmazonElasticKubernetesService, ...themes.compute },
+  'eksnodegroup': { icon: AmazonEc2, ...themes.compute },
+  'ecscluster': { icon: AmazonElasticContainerService, ...themes.compute },
+  'autoscalinggroup': { icon: AmazonEc2, ...themes.compute },
+  'asg': { icon: AmazonEc2, ...themes.compute },
+  'elasticbeanstalkenvironment': { icon: AwsElasticBeanstalk, ...themes.compute },
+  'batchcomputeenvironment': { icon: AmazonElasticContainerService, ...themes.compute },
+  'apprunnervpcconnector': { icon: AwsElasticBeanstalk, ...themes.compute },
+  'workspace': { icon: AmazonEc2, ...themes.compute },
+  'application': { icon: AwsElasticBeanstalk, ...themes.compute },
 
   // Database
-  'RDSInstance': { icon: Database, ...themes.dbSky },
-  'RDS': { icon: Database, ...themes.dbSky },
-  'RedshiftCluster': { icon: Database, ...themes.dbSky },
-  'DocumentDBCluster': { icon: Database, ...themes.dbSky },
-  'MemoryDBCluster': { icon: Database, ...themes.dbSky },
-  'NeptuneCluster': { icon: Database, ...themes.dbSky },
-  'ElastiCacheNode': { icon: Database, ...themes.dbSky },
-  'DirectoryService': { icon: Database, ...themes.dbSky },
+  'rdsinstance': { icon: AmazonRds, ...themes.database },
+  'rds': { icon: AmazonRds, ...themes.database },
+  'redshiftcluster': { icon: AmazonRedshift, ...themes.database },
+  'documentdbcluster': { icon: AmazonDocumentDb, ...themes.database },
+  'memorydbcluster': { icon: AmazonElastiCache, ...themes.database },
+  'neptunecluster': { icon: AmazonDynamoDb, ...themes.database },
+  'elasticachenode': { icon: AmazonElastiCache, ...themes.database },
+  'directoryservice': { icon: AwsIdentityAndAccessManagement, ...themes.database },
 
   // Storage
-  'S3Bucket': { icon: Box, ...themes.storageYellow },
-  'EbsVolume': { icon: Box, ...themes.storageYellow },
-  'EBS': { icon: HardDrive, ...themes.ebsPurple },
-  'EFSMountTarget': { icon: Box, ...themes.storageYellow },
-  'FSxFileSystem': { icon: Box, ...themes.storageYellow },
+  's3bucket': { icon: AmazonSimpleStorageService, ...themes.storage },
+  'ebsvolume': { icon: AmazonElasticBlockStore, ...themes.storage },
+  'ebs': { icon: AmazonElasticBlockStore, ...themes.storage },
+  'efsmounttarget': { icon: AmazonElasticBlockStore, ...themes.storage },
+  'fsxfilesystem': { icon: AmazonElasticBlockStore, ...themes.storage },
 
   // Analytics & ML
-  'SageMakerNotebook': { icon: Zap, ...themes.mlOrange },
-  'EMRCluster': { icon: Zap, ...themes.mlOrange },
-  'GlueConnection': { icon: Zap, ...themes.mlOrange },
-  'LambdaFunction': { icon: Zap, ...themes.mlOrange },
-  'Lambda': { icon: Zap, ...themes.mlOrange },
+  'sagemakernotebook': { icon: AwsLambda, ...themes.compute },
+  'emrcluster': { icon: AwsLambda, ...themes.compute },
+  'glueconnection': { icon: AwsLambda, ...themes.compute },
+  'lambdafunction': { icon: AwsLambda, ...themes.compute },
+  'lambda': { icon: AwsLambda, ...themes.compute },
 
-  // Messaging
-  'RegionalQueue': { icon: HardDrive, ...themes.mlOrange },
-  'SQS': { icon: HardDrive, ...themes.mlOrange },
-  'AmazonMQBroker': { icon: HardDrive, ...themes.mlOrange },
-  'MSKCluster': { icon: HardDrive, ...themes.mlOrange },
+  // Messaging & Monitoring
+  'regionalqueue': { icon: AmazonSimpleQueueService, ...themes.monitoring },
+  'sqs': { icon: AmazonSimpleQueueService, ...themes.monitoring },
+  'amazonmqbroker': { icon: AmazonSimpleQueueService, ...themes.monitoring },
+  'mskcluster': { icon: AmazonSimpleQueueService, ...themes.monitoring },
+  'sns': { icon: AmazonSimpleNotificationService, ...themes.monitoring },
+  'snstopic': { icon: AmazonSimpleNotificationService, ...themes.monitoring },
+  'cloudwatchalarm': { icon: AmazonCloudWatch, ...themes.monitoring },
+  'cloudwatchlogs': { icon: AmazonCloudWatch, ...themes.monitoring },
+  'eventbridge': { icon: AmazonCloudWatch, ...themes.monitoring },
 
   // Security
-  'SecurityGroup': { icon: Shield, ...themes.secRed },
-  'NetworkFirewall': { icon: Shield, ...themes.secRed },
-  'NetworkAcl': { icon: Lock, ...themes.secLightRed },
-  'IAMRole': { icon: Shield, ...themes.iamPink },
-  'IAM_ROLE': { icon: Key, ...themes.iamYellow },
-  'SecurityAndCompliance': { icon: Shield, ...themes.iamPink },
+  'securitygroup': { icon: AwsShield, ...themes.security },
+  'networkfirewall': { icon: AwsNetworkFirewall, ...themes.security },
+  'networkacl': { icon: AwsShield, ...themes.security },
+  'iamrole': { icon: AwsIdentityAndAccessManagement, ...themes.security },
+  'instanceprofile': { icon: AwsIdentityAndAccessManagement, ...themes.security },
+  'securityandcompliance': { icon: AwsIdentityAndAccessManagement, ...themes.security },
 
   // Networking Core
-  'RouteTable': { icon: Network, ...themes.netCyan },
-  'Subnet': { icon: Network, ...themes.netCyan },
-  'VpcEndpoint': { icon: Network, ...themes.netCyan },
-  'GWLBEndpoint': { icon: Network, ...themes.netCyan },
-  'NetworkFirewallEndpoint': { icon: Network, ...themes.netCyan },
-  'Route53ResolverEndpoint': { icon: Network, ...themes.netCyan },
-  'PeeringConnection': { icon: Network, ...themes.netCyan },
-  'VpnConnection': { icon: Network, ...themes.netCyan },
-  'HybridConnectivity': { icon: Network, ...themes.netCyan },
-  'TransitGatewayRouteTable': { icon: Network, ...themes.netCyan },
+  'routetable': { icon: AwsTransitGateway, ...themes.network },
+  'subnet': { icon: AmazonVirtualPrivateCloud, ...themes.network },
+  'vpcendpoint': { icon: AwsTransitGateway, ...themes.network },
+  'gwlbendpoint': { icon: AwsTransitGateway, ...themes.network },
+  'networkfirewallendpoint': { icon: AwsTransitGateway, ...themes.network },
+  'route53resolverendpoint': { icon: AmazonRoute53, ...themes.network },
+  'peeringconnection': { icon: AwsTransitGateway, ...themes.network },
+  'vpnconnection': { icon: AwsTransitGateway, ...themes.network },
+  'hybridconnectivity': { icon: AwsTransitGateway, ...themes.network },
+  'transitgatewayroutetable': { icon: AwsTransitGateway, ...themes.network },
 
   // Networking Gateways & VPC
-  'InternetGateway': { icon: Cloud, ...themes.dbSky },
-  'EgressOnlyInternetGateway': { icon: Cloud, ...themes.dbSky },
-  'NatGateway': { icon: Cloud, ...themes.dbSky },
-  'VpnGateway': { icon: Cloud, ...themes.dbSky },
-  'TransitGatewayAttachment': { icon: Cloud, ...themes.dbSky },
-  'CarrierGateway': { icon: Cloud, ...themes.dbSky },
-  'GatewayLoadBalancer': { icon: Cloud, ...themes.dbSky },
-  'VPC': { icon: Cloud, ...themes.vpcPurple },
-  'VPCs': { icon: Cloud, ...themes.vpcPurple },
+  'internetgateway': { icon: AmazonVpcInternetGateway, ...themes.network },
+  'igw': { icon: AmazonVpcInternetGateway, ...themes.network },
+  'egressonlyinternetgateway': { icon: AmazonVpcInternetGateway, ...themes.network },
+  'natgateway': { icon: AmazonVpcInternetGateway, ...themes.network },
+  'vpngateway': { icon: AwsTransitGateway, ...themes.network },
+  'transitgatewayattachment': { icon: AwsTransitGateway, ...themes.network },
+  'carriergateway': { icon: AwsTransitGateway, ...themes.network },
+  'gatewayloadbalancer': { icon: AwsTransitGateway, ...themes.network },
+  'vpc': { icon: AmazonVirtualPrivateCloud, ...themes.network },
 
-  // Load Balancers
-  'LoadBalancer': { icon: Network, ...themes.lbIndigo },
-  'TargetGroup': { icon: Network, ...themes.lbIndigo },
+  // Load Balancers & Target Groups
+  'loadbalancer': { icon: ElasticLoadBalancing, ...themes.loadBalancer },
+  'alb': { icon: ElasticLoadBalancing, ...themes.loadBalancer },
+  'nlb': { icon: ElasticLoadBalancing, ...themes.loadBalancer },
+  'targetgroup': { icon: ElasticLoadBalancing, ...themes.targetGroup },
 
   // Global & Edge
-  'CloudFrontDistribution': { icon: Globe, ...themes.netLightCyan },
-  'OpenSearchDomain': { icon: Globe, ...themes.netLightCyan },
-  'Route53HostedZone': { icon: Globe, ...themes.netLightCyan },
+  'cloudfrontdistribution': { icon: AmazonCloudFront, ...themes.cloudFront },
+  'opensearchdomain': { icon: AmazonOpenSearchService, ...themes.cloudFront },
+  'route53hostedzone': { icon: AmazonRoute53, ...themes.route53 },
+  'route53': { icon: AmazonRoute53, ...themes.route53 },
 
   // Miscelleneous
-  'ElasticIp': { icon: Activity, ...themes.miscLightSky },
-  'UnclassifiedENI': { icon: Activity, ...themes.miscLightSky },
-  'DhcpOption': { icon: Activity, ...themes.miscLightSky },
+  'elasticip': { icon: AmazonVirtualPrivateCloud, ...themes.external },
+  'unclassifiedeni': { icon: AmazonVirtualPrivateCloud, ...themes.external },
+  'dhcpoption': { icon: AmazonVirtualPrivateCloud, ...themes.external },
 
   // Fallbacks
-  'Default': { icon: Activity, ...themes.defaultGray }
+  'default': { icon: AmazonCloudWatch, ...themes.external }
 };
 
 export const normalizeType = (type) => {
-  return type.endsWith('s') && type !== 'DhcpOptions' && type !== 'ElasticIps' && type !== 'Route53ResolverEndpoints' && type !== 'VPCs'
-    ? type.slice(0, -1) 
-    : type;
+  if (!type) return 'default';
+  
+  // Lowercase and strip all spaces and underscores for exact matching
+  let norm = type.toLowerCase().replace(/[\s_]+/g, '');
+  
+  // Handle plurals unless they naturally end in 's'
+  const exceptions = ['dhcpoptions', 'elasticips', 'route53resolverendpoints', 'vpcs', 'rds'];
+  if (norm.endsWith('s') && !exceptions.includes(norm)) {
+    norm = norm.slice(0, -1);
+  }
+  
+  return norm;
 };
 
-export const getIcon = (type, size = 14) => {
+export const getIcon = (type, size = 14, customClass = null) => {
   const norm = normalizeType(type);
-  const config = RESOURCE_MAP[norm] || RESOURCE_MAP['Default'];
+  const config = RESOURCE_MAP[norm] || RESOURCE_MAP['default'];
   const IconComponent = config.icon;
-  return <IconComponent size={size} className={config.text} />;
+  // If a custom class is provided, use it exclusively, else fallback to the config's text color
+  const className = customClass !== null ? customClass : config.text;
+  // Use both size (lucide) and width/height (aws-icons) for compatibility
+  return <IconComponent size={size} width={size} height={size} className={className} />;
 };
 
 export const getColorClasses = (type) => {
   const norm = normalizeType(type);
-  return RESOURCE_MAP[norm] || RESOURCE_MAP['Default'];
+  return RESOURCE_MAP[norm] || RESOURCE_MAP['default'];
 };
 
 export const getGlowColors = (type) => {
-  const { text } = getColorClasses(type);
-  
-  if (text.includes('green') || text.includes('emerald')) return ['rgba(74,222,128,0.6)', 'rgba(34,197,94,0.6)'];
-  if (text.includes('sky') || text.includes('cyan')) return ['rgba(56,189,248,0.6)', 'rgba(14,165,233,0.6)'];
-  if (text.includes('orange') || text.includes('yellow')) return ['rgba(251,146,60,0.6)', 'rgba(249,115,22,0.6)'];
-  if (text.includes('red') || text.includes('pink')) return ['rgba(248,113,113,0.6)', 'rgba(239,68,68,0.6)'];
-  
-  // Default to violet/indigo
-  return ['rgba(167,139,250,0.6)', 'rgba(139,92,246,0.6)'];
+  return ['rgba(0,0,0,0)', 'rgba(0,0,0,0)']; // Disabling dynamic glow in favor of health-based static colors
 };

@@ -213,13 +213,13 @@ export default function ResourceDetailModal({ node, edges, allNodes, onClose, gl
                       onClick={() => setActiveTab(tab)} 
                       className={`px-3 py-1 text-[11px] font-bold rounded-md transition-colors relative z-10 capitalize ${
                         activeTab === tab 
-                        ? (tab === 'diagnostics' && ['CRITICAL', 'BLOCKED'].includes(data.health_state)) ? 'text-red-400' : 'text-white' 
-                        : (tab === 'diagnostics' && ['CRITICAL', 'BLOCKED'].includes(data.health_state)) ? 'text-red-500/70 hover:text-red-400' : 'text-zinc-500 hover:text-zinc-300'
+                        ? (tab === 'overview' && ['CRITICAL', 'BLOCKED'].includes(data.health_state)) ? 'text-red-400' : 'text-white' 
+                        : (tab === 'overview' && ['CRITICAL', 'BLOCKED'].includes(data.health_state)) ? 'text-red-500/70 hover:text-red-400' : 'text-zinc-500 hover:text-zinc-300'
                       }`}
                     >
                       {activeTab === tab && <motion.div layoutId="detailTab" className="absolute inset-0 bg-[#26262b] rounded-md z-[-1]" />}
                       {tab}
-                      {tab === 'diagnostics' && ['CRITICAL', 'BLOCKED'].includes(data.health_state) && (
+                      {tab === 'overview' && ['CRITICAL', 'BLOCKED'].includes(data.health_state) && (
                         <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-ping"></span>
                       )}
                     </button>
@@ -248,6 +248,49 @@ export default function ResourceDetailModal({ node, edges, allNodes, onClose, gl
                   </div>
                 </div>
               ) : activeTab === 'diagnostics' ? (
+                <div className="flex flex-col gap-4">
+                  <div className="flex flex-col items-center justify-center py-10 opacity-70">
+                    <Activity className="h-10 w-10 text-zinc-500 mb-3" />
+                    <p className="text-sm text-zinc-400 font-medium">Deep Diagnostics Dashboard</p>
+                    <p className="text-[11px] text-zinc-500 mt-1 max-w-[250px] text-center leading-relaxed">
+                      Select individual resources to view their live metrics, logs, and trace telemetry.
+                    </p>
+                    <button 
+                      onClick={() => onShowDiagnostics && onShowDiagnostics(node.id)}
+                      className="mt-6 px-4 py-2 bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 hover:bg-indigo-500/30 text-[11px] font-bold uppercase tracking-wider rounded-lg transition-colors flex items-center gap-2"
+                    >
+                      <Activity size={14} />
+                      Open Full Diagnostics
+                    </button>
+                  </div>
+                </div>
+              ) : activeTab === 'overview' && (data.metadata?.isGroupNode || data.metadata?.groupedNodes) ? (
+                <div className="flex flex-col gap-4 pb-4">
+                  <div className="flex items-center justify-between border-b border-[#2d333b] pb-2">
+                    <span className="text-[13px] text-zinc-200 font-bold uppercase tracking-wider">Grouped Resources</span>
+                    <span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 font-bold text-[11px]">{data.metadata.groupedNodes?.length} Total</span>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    {data.metadata.groupedNodes?.map((gn, idx) => (
+                      <div key={idx} className="bg-[#161a22] border border-[#2d333b] p-3 rounded-lg flex flex-col gap-1.5 shadow-sm hover:border-[#3d444d] transition-colors">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[13px] font-bold text-sky-400 truncate pr-2">{gn.label || gn.id}</span>
+                          <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded border shrink-0 ${gn.health_state === 'HEALTHY' || gn.health_state === 'OK' ? 'bg-emerald-900/30 text-emerald-400 border-emerald-800' : gn.health_state === 'CRITICAL' ? 'bg-red-900/30 text-red-400 border-red-800' : 'bg-amber-900/30 text-amber-400 border-amber-800'}`}>
+                            {gn.health_state || 'UNKNOWN'}
+                          </span>
+                        </div>
+                        <span className="text-[11px] font-mono text-zinc-500 truncate">{gn.id}</span>
+                        {gn.diagnostic && (
+                          <div className="mt-1 text-[10px] text-zinc-400 bg-[#1c2128] p-1.5 rounded border border-[#2d333b] italic">
+                            <AlertTriangle size={10} className="inline mr-1 -mt-0.5" />
+                            {gn.diagnostic}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : activeTab === 'overview' ? (
                 <div className="flex flex-col gap-3">
                     {['CRITICAL', 'BLOCKED', 'DEGRADED'].includes(data.health_state) ? (
                         <div className={`p-4 ${data.health_state === 'DEGRADED' ? 'bg-amber-950/20 border-amber-500/30' : 'bg-red-950/20 border-red-500/30'} border rounded-xl flex flex-col gap-2`}>
@@ -255,11 +298,34 @@ export default function ResourceDetailModal({ node, edges, allNodes, onClose, gl
                                 <AlertTriangle size={18} className={data.health_state === 'CRITICAL' ? "animate-pulse" : ""} />
                                 <h3 className="font-bold text-xs uppercase tracking-wider">{data.health_state === 'DEGRADED' ? 'Degraded Performance' : 'Root Cause Detected'}</h3>
                             </div>
-                            <p className={`${data.health_state === 'DEGRADED' ? 'text-amber-200/90 border-amber-500/20' : 'text-red-200/90 border-red-500/20'} text-[12px] leading-relaxed border-t pt-2`}>
-                                {typeof data.diagnostic === 'object' && data.diagnostic !== null 
-                                  ? (data.diagnostic.message || JSON.stringify(data.diagnostic))
-                                  : (data.diagnostic || 'Issues detected in this resource.')}
-                            </p>
+                            <div className={`${data.health_state === 'DEGRADED' ? 'text-amber-200/90 border-amber-500/20' : 'text-red-200/90 border-red-500/20'} text-[12px] leading-relaxed border-t pt-2`}>
+                                {(() => {
+                                  let diagText = typeof data.diagnostic === 'object' && data.diagnostic !== null 
+                                    ? (data.diagnostic.message || JSON.stringify(data.diagnostic))
+                                    : (data.diagnostic || 'Issues detected in this resource.');
+                                  
+                                  let points = [];
+                                  if (diagText.includes('|')) {
+                                    points = diagText.split('|').map(p => p.trim());
+                                  } else if (diagText.includes('\n')) {
+                                    points = diagText.split('\n').map(p => p.trim());
+                                  } else if (diagText.includes('. ')) {
+                                    points = diagText.split('. ').map(p => p.trim()).map(p => p.endsWith('.') ? p : p + '.');
+                                  } else {
+                                    points = [diagText];
+                                  }
+                                  
+                                  points = points.filter(p => p.length > 0);
+                                  
+                                  if (points.length <= 1) return <p>{diagText}</p>;
+                                  
+                                  return (
+                                    <ul className="list-disc pl-4 flex flex-col gap-1">
+                                      {points.map((pt, i) => <li key={i}>{pt}</li>)}
+                                    </ul>
+                                  );
+                                })()}
+                            </div>
                         </div>
                     ) : (
                         <div className="p-4 bg-emerald-950/20 border border-emerald-500/30 rounded-xl flex flex-col items-center justify-center py-8 gap-2 text-center">
@@ -302,6 +368,94 @@ export default function ResourceDetailModal({ node, edges, allNodes, onClose, gl
                             </div>
                         </div>
                     )}
+                    
+                    {(() => {
+                        const containsEdges = edges.filter(e => e.source === node.id && e.relation === 'CONTAINS');
+                        if (containsEdges.length === 0) return null;
+                        
+                        const counts = {};
+                        containsEdges.forEach(e => {
+                            let prefix = 'RESOURCE';
+                            if (e.target.startsWith('subnet-')) prefix = 'SUBNET';
+                            else if (e.target.startsWith('vpc-')) prefix = 'VPC';
+                            else if (e.target.startsWith('i-')) prefix = 'EC2';
+                            else if (e.target.startsWith('vol-')) prefix = 'EBS';
+                            else if (e.target.startsWith('igw-')) prefix = 'IGW';
+                            else if (e.target.startsWith('nat-')) prefix = 'NAT';
+                            else if (e.target.includes('targetgroup')) prefix = 'TARGET GROUP';
+                            else if (e.target.includes('loadbalancer')) prefix = 'ALB';
+                            
+                            counts[prefix] = (counts[prefix] || 0) + 1;
+                        });
+                        
+                        return (
+                            <div className="mt-2">
+                                <h3 className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                    Contained Resources (Analytics)
+                                    <span className="h-px bg-zinc-800 flex-1"></span>
+                                </h3>
+                                <div className="flex flex-wrap gap-2">
+                                    {Object.entries(counts).map(([type, count]) => (
+                                        <div key={type} className="bg-purple-900/20 px-3 py-2 rounded-lg border border-purple-500/30 flex items-center gap-2">
+                                            <span className="text-[10px] font-bold text-purple-400 uppercase tracking-wider">{type}</span>
+                                            <span className="bg-purple-500/20 text-purple-300 text-[10px] px-1.5 py-0.5 rounded-md font-mono">{count}</span>
+                                        </div>
+                                    ))}
+                                    <div className="bg-emerald-900/20 px-3 py-2 rounded-lg border border-emerald-500/30 flex items-center gap-2 ml-auto">
+                                        <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">TOTAL CONNECTED</span>
+                                        <span className="bg-emerald-500/20 text-emerald-300 text-[10px] px-1.5 py-0.5 rounded-md font-mono">{containsEdges.length}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })()}
+                      
+                    {data.Tags && data.Tags.length > 0 && (
+                        <div className="mt-2">
+                            <h3 className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                Resource Tags
+                                <span className="h-px bg-zinc-800 flex-1"></span>
+                            </h3>
+                            <div className="grid grid-cols-2 gap-2">
+                                {data.Tags.map((tag, idx) => (
+                                    <div key={idx} className="bg-[#161b22] px-2 py-1.5 rounded-lg border border-[#26262b] flex items-center justify-between">
+                                        <span className="text-[9px] font-bold text-zinc-500 uppercase">{tag.Key}</span>
+                                        <span className="text-[11px] text-zinc-300 font-medium truncate ml-2" title={tag.Value}>{tag.Value}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="mt-2">
+                        <h3 className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest mb-2 flex items-center gap-2">
+                            Configuration & Networking
+                            <span className="h-px bg-zinc-800 flex-1"></span>
+                        </h3>
+                        <div className="grid grid-cols-2 gap-2">
+                          {(() => {
+                              const metadata = data.metadata || {};
+                              const ignoreKeys = ['status_checks', 'health_state', 'diagnostic', 'diagnostic_details', 'isGroupNode', 'groupedNodes'];
+                              const entries = Object.entries(metadata).filter(([k, v]) => !ignoreKeys.includes(k) && v !== null && v !== undefined && v !== '' && !(Array.isArray(v) && v.length === 0));
+                              
+                              if (entries.length === 0) {
+                                  return <div className="text-zinc-500 text-xs italic col-span-2">No configuration metadata available.</div>;
+                              }
+                              
+                              return entries.map(([key, value]) => {
+                                  const isComplex = typeof value === 'object' && value !== null;
+                                  return (
+                                  <div key={key} className={`bg-[#161b22] p-3 rounded-xl border border-[#26262b] shadow-sm ${isComplex ? 'col-span-2' : 'col-span-1'}`}>
+                                      <label className="text-[10px] uppercase tracking-wider text-zinc-500 font-bold mb-1 block">{formatKey(key)}</label>
+                                      <div className="text-[12px] font-bold text-zinc-200">
+                                      {renderValue(key, value)}
+                                      </div>
+                                  </div>
+                                  );
+                              })
+                          })()}
+                        </div>
+                    </div>
                 </div>
               ) : activeTab === 'flow' ? (
                 <div className="flex flex-col gap-4">
@@ -326,7 +480,6 @@ export default function ResourceDetailModal({ node, edges, allNodes, onClose, gl
                           <div className="flex flex-col">
                             {groupEdges.map((edge, idx) => {
                               const connectedNodeId = isInbound ? edge.source : edge.target;
-                              // Check if connected node is inside the group itself (internal edge). If so, skip or label accordingly.
                               if (data.metadata?.groupedNodes && data.metadata.groupedNodes.find(gn => gn.id === connectedNodeId)) {
                                   return null;
                               }
@@ -350,8 +503,24 @@ export default function ResourceDetailModal({ node, edges, allNodes, onClose, gl
                                     </div>
                                     {edge.diagnostic && (
                                       <div className={`mt-1 text-[11px] p-2 rounded border ${isCriticalEdge ? 'bg-red-950/30 border-red-500/20 text-red-200/90' : 'bg-zinc-800/50 border-zinc-700/50 text-zinc-300'}`}>
-                                        <AlertTriangle size={12} className="inline mr-1.5 -mt-0.5 opacity-70" />
-                                        {edge.diagnostic}
+                                        <AlertTriangle size={12} className="inline mr-1.5 -mt-0.5 opacity-70 float-left" />
+                                        <div className="pl-5">
+                                          {(() => {
+                                            let diagText = String(edge.diagnostic);
+                                            let points = diagText.includes('|') ? diagText.split('|').map(p => p.trim()) 
+                                                       : diagText.includes('\n') ? diagText.split('\n').map(p => p.trim()) 
+                                                       : diagText.includes('. ') ? diagText.split('. ').map(p => p.trim()).map(p => p.endsWith('.') ? p : p + '.') 
+                                                       : [diagText];
+                                            points = points.filter(p => p.length > 0);
+                                            
+                                            if (points.length <= 1) return <p>{diagText}</p>;
+                                            return (
+                                              <ul className="list-disc pl-2 flex flex-col gap-0.5">
+                                                {points.map((pt, i) => <li key={i}>{pt}</li>)}
+                                              </ul>
+                                            );
+                                          })()}
+                                        </div>
                                       </div>
                                     )}
                                   </div>
@@ -370,120 +539,7 @@ export default function ResourceDetailModal({ node, edges, allNodes, onClose, gl
                     );
                   })()}
                 </div>
-              ) : data.metadata?.groupedNodes ? (
-                <div className="flex flex-col gap-3">
-                  <h3 className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest mb-2 flex items-center gap-2">
-                    {data.metadata.groupedNodes.length} Aggregated Resources
-                    <span className="h-px bg-zinc-800 flex-1"></span>
-                  </h3>
-                  {data.metadata.groupedNodes.map((gn, idx) => (
-                     <div key={idx} className="bg-[#161b22] border border-[#26262b] rounded-xl p-3 flex flex-col gap-2 shadow-sm">
-                        <div className="flex items-center justify-between border-b border-[#2d333b] pb-2">
-                          <span className="font-bold text-xs text-zinc-100">{gn.label || gn.id}</span>
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${gn.health_state === 'CRITICAL' ? 'bg-red-900/40 text-red-400 border border-red-800' : gn.health_state === 'DEGRADED' ? 'bg-amber-900/40 text-amber-400 border border-amber-800' : 'bg-green-900/40 text-green-400 border border-green-800'}`}>{gn.health_state || 'HEALTHY'}</span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2 mt-1">
-                          {Object.entries(gn.metadata || {}).filter(([k, v]) => v !== null && typeof v !== 'object').map(([k, v]) => (
-                             <div key={k} className="flex flex-col overflow-hidden">
-                               <span className="text-[9px] uppercase tracking-wider text-zinc-500 font-bold">{formatKey(k)}</span>
-                               <span className="text-[11px] font-bold text-zinc-300 truncate" title={String(v)}>{String(v)}</span>
-                             </div>
-                          ))}
-                        </div>
-                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-col gap-4">
-                  {(() => {
-                      const containsEdges = edges.filter(e => e.source === node.id && e.relation === 'CONTAINS');
-                      if (containsEdges.length === 0) return null;
-                      
-                      const counts = {};
-                      containsEdges.forEach(e => {
-                          let prefix = 'RESOURCE';
-                          if (e.target.startsWith('subnet-')) prefix = 'SUBNET';
-                          else if (e.target.startsWith('vpc-')) prefix = 'VPC';
-                          else if (e.target.startsWith('i-')) prefix = 'EC2';
-                          else if (e.target.startsWith('vol-')) prefix = 'EBS';
-                          else if (e.target.startsWith('igw-')) prefix = 'IGW';
-                          else if (e.target.startsWith('nat-')) prefix = 'NAT';
-                          else if (e.target.includes('targetgroup')) prefix = 'TARGET GROUP';
-                          else if (e.target.includes('loadbalancer')) prefix = 'ALB';
-                          
-                          counts[prefix] = (counts[prefix] || 0) + 1;
-                      });
-                      
-                      return (
-                          <div>
-                              <h3 className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest mb-2 flex items-center gap-2">
-                                  Contained Resources (Analytics)
-                                  <span className="h-px bg-zinc-800 flex-1"></span>
-                              </h3>
-                              <div className="flex flex-wrap gap-2">
-                                  {Object.entries(counts).map(([type, count]) => (
-                                      <div key={type} className="bg-purple-900/20 px-3 py-2 rounded-lg border border-purple-500/30 flex items-center gap-2">
-                                          <span className="text-[10px] font-bold text-purple-400 uppercase tracking-wider">{type}</span>
-                                          <span className="bg-purple-500/20 text-purple-300 text-[10px] px-1.5 py-0.5 rounded-md font-mono">{count}</span>
-                                      </div>
-                                  ))}
-                                  <div className="bg-emerald-900/20 px-3 py-2 rounded-lg border border-emerald-500/30 flex items-center gap-2 ml-auto">
-                                      <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">TOTAL CONNECTED</span>
-                                      <span className="bg-emerald-500/20 text-emerald-300 text-[10px] px-1.5 py-0.5 rounded-md font-mono">{containsEdges.length}</span>
-                                  </div>
-                              </div>
-                          </div>
-                      );
-                  })()}
-                    
-                    {data.Tags && data.Tags.length > 0 && (
-                        <div>
-                            <h3 className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest mb-2 flex items-center gap-2">
-                                Resource Tags
-                                <span className="h-px bg-zinc-800 flex-1"></span>
-                            </h3>
-                            <div className="grid grid-cols-2 gap-2">
-                                {data.Tags.map((tag, idx) => (
-                                    <div key={idx} className="bg-[#161b22] px-2 py-1.5 rounded-lg border border-[#26262b] flex items-center justify-between">
-                                        <span className="text-[9px] font-bold text-zinc-500 uppercase">{tag.Key}</span>
-                                        <span className="text-[11px] text-zinc-300 font-medium truncate ml-2" title={tag.Value}>{tag.Value}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                  <div>
-                      <h3 className="text-[11px] font-bold text-zinc-500 uppercase tracking-widest mb-2 flex items-center gap-2">
-                          Configuration & Networking
-                          <span className="h-px bg-zinc-800 flex-1"></span>
-                      </h3>
-                      <div className="grid grid-cols-2 gap-2">
-                        {(() => {
-                            const metadata = data.metadata || {};
-                            const ignoreKeys = ['status_checks', 'health_state', 'diagnostic', 'diagnostic_details'];
-                            const entries = Object.entries(metadata).filter(([k, v]) => !ignoreKeys.includes(k) && v !== null && v !== undefined && v !== '' && !(Array.isArray(v) && v.length === 0));
-                            
-                            if (entries.length === 0) {
-                                return <div className="text-zinc-500 text-xs italic col-span-2">No configuration metadata available.</div>;
-                            }
-                            
-                            return entries.map(([key, value]) => {
-                                const isComplex = typeof value === 'object' && value !== null;
-                                return (
-                                <div key={key} className={`bg-[#161b22] p-3 rounded-xl border border-[#26262b] shadow-sm ${isComplex ? 'col-span-2' : 'col-span-1'}`}>
-                                    <label className="text-[10px] uppercase tracking-wider text-zinc-500 font-bold mb-1 block">{formatKey(key)}</label>
-                                    <div className="text-[12px] font-bold text-zinc-200">
-                                    {renderValue(key, value)}
-                                    </div>
-                                </div>
-                                );
-                            })
-                        })()}
-                      </div>
-                  </div>
-                </div>
-              )}
+              ) : null}
             </div>
           </motion.div>
         </motion.div>

@@ -131,6 +131,8 @@ class ASGHandler(BaseScaleToZeroHandler):
                 if not next_token:
                     break
         except Exception as e:
+            if any(auth_err in str(e) for auth_err in ["ExpiredToken", "RequestExpired", "InvalidClientTokenId", "InvalidAccessKeyId", "AuthFailure", "security token"]):
+                raise e
             logger.warning(f"Error mapping capacity providers in ASG sync scan: {e}")
 
         # Map EKS ASGs

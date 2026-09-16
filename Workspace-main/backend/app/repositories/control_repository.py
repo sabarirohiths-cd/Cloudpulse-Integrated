@@ -112,6 +112,9 @@ class ControlRepository:
         
         if missing_parents:
             parent_stmt = select(ControlResource).join(ConfigCloudAccount, ControlResource.account_name == ConfigCloudAccount.account_name).where(ConfigCloudAccount.active_modules.like("%control%")).where(ControlResource.resource_id.in_(missing_parents))
+            if not show_hidden:
+                parent_stmt = parent_stmt.where(ControlResource.is_visible == True)
+            
             parent_res = await db.execute(parent_stmt)
             schedules.extend(parent_res.scalars().all())
             

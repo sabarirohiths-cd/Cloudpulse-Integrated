@@ -1,0 +1,16 @@
+AWS Read-Only Security Validation Report
+Generated On: 2026-09-10 15:09:57
+--------------------------------------------------
+
+❌ STATUS: FAIL - MODIFYING ACTIONS DETECTED
+
+Explanation:
+• Found 2 potential modifying AWS API calls.
+• Please review the following lines of code to ensure they do not alter AWS infrastructure:
+
+  -> File: main.py (Line 58)
+     Code: ec2.terminate_instances(InstanceIds=['i-main-test'])
+
+  -> File: app\services\aws\topology\fetchers\ec2_flow.py (Line 254)
+     Code: self.ec2_client.modify_instance_attribute(
+

@@ -111,6 +111,8 @@ def discover_beanstalk_environments(session, region: str) -> List[Dict[str, Any]
                 break
 
     except Exception as e:
+        if any(auth_err in str(e) for auth_err in ["ExpiredToken", "RequestExpired", "InvalidClientTokenId", "InvalidAccessKeyId", "AuthFailure", "security token"]):
+            raise e
         logger.error(f"Error scanning Beanstalk resources in {region}: {e}")
 
     return resources

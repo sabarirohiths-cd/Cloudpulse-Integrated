@@ -132,6 +132,8 @@ def map_all_eks_unmanaged_asgs(session, region: str) -> Dict[str, str]:
                         asg_to_cluster[asg_name] = deep_cluster
                         
     except Exception as e:
+        if any(auth_err in str(e) for auth_err in ["ExpiredToken", "RequestExpired", "InvalidClientTokenId", "InvalidAccessKeyId", "AuthFailure", "security token"]):
+            raise e
         logger.warning(f"Error mapping EKS ASGs in region {region}: {e}")
         
     return asg_to_cluster

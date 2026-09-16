@@ -16,14 +16,37 @@ export function PreviewStep({ visibleResources, hasChanges, onPrev, onSave, isSa
           </p>
         </div>
 
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4">
           <button 
-            onClick={onSave}
-            disabled={isSaving || !hasChanges}
-            className="flex items-center gap-2 px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-[12px] font-bold rounded-full transition-colors shadow-[0_0_15px_rgba(16,185,129,0.3)] disabled:opacity-50 disabled:shadow-none disabled:bg-zinc-700"
+            onClick={onPrev}
+            disabled={isSaving}
+            className="flex items-center gap-2 px-4 py-2 bg-[#1a1f26] hover:bg-[#262c36] text-white text-[12px] font-bold rounded-full transition-colors border border-zinc-800"
           >
-            <Save className={`h-3.5 w-3.5 ${isSaving ? 'animate-pulse' : ''}`} />
-            {isSaving ? 'Saving...' : 'Save Changes'}
+            ← Back
+          </button>
+          
+          <button 
+            onClick={hasChanges ? onSave : () => onSave(true)}
+            disabled={isSaving}
+            className={`flex items-center gap-2 px-5 py-2 text-[12px] font-bold rounded-full transition-colors ${
+              hasChanges 
+                ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-[0_0_15px_rgba(16,185,129,0.3)]' 
+                : 'bg-[#1a1f26] text-zinc-400 border border-zinc-800 hover:bg-[#262c36] hover:text-white'
+            }`}
+          >
+            {isSaving ? (
+              <>
+                <Save className="h-3.5 w-3.5 animate-pulse" />
+                Saving...
+              </>
+            ) : hasChanges ? (
+              <>
+                <Save className="h-3.5 w-3.5" />
+                Save Changes
+              </>
+            ) : (
+              'Done'
+            )}
           </button>
         </div>
       </div>
